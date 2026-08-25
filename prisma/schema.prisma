@@ -53,6 +53,7 @@ model WatchedSection {
 
   lastNotified DateTime?
   notified     Boolean   @default(false)
+  cancelledAt  DateTime?
 
   paidId        String
   isPaid        Boolean @default(false)
@@ -78,6 +79,7 @@ model WatchedSection {
   @@index([classInfoId])
   @@index([createdAt])
   @@index([studentId])
+  @@index([studentId, cancelledAt])
   @@index([paidId])
 }
 

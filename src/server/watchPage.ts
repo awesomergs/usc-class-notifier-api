@@ -33,9 +33,11 @@ export async function loadWatchPageProps({
     });
 
     if (section) {
+      // Following the signed "continue receiving notifications" link is an
+      // explicit request to reactivate a watch that was canceled afterward.
       const update = await prisma.watchedSection.updateMany({
         where: { id: section, studentId: student.id },
-        data: { notified: false },
+        data: { cancelledAt: null, notified: false },
       });
       didSucceed = update.count === 1;
     }

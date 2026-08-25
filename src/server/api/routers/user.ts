@@ -19,6 +19,7 @@ import {
 } from "@/server/paidReference";
 import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 import type { Prisma } from "@app/prisma";
+import { cancelWatchedSection } from "@/server/api/watchedSectionCancellation";
 
 const optionalPhoneNumberSchema = z
   .string()
@@ -98,6 +99,7 @@ export const userRouter = {
     return ctx.prisma.watchedSection.findMany({
       where: {
         studentId: user.id,
+        cancelledAt: null,
       },
       include: {
         ClassInfo: true,
@@ -203,7 +205,7 @@ export const userRouter = {
             paidId = availablePaidId;
           }
 
-          const sectionUpdate: Prisma.WatchedSectionUpdateInput = { paidId };
+          const sectionUpdate: Prisma.WatchedSectionUpdateInput = { cancelledAt: null, paidId };
           if (ownsStudent) {
             sectionUpdate.notified = false;
             if (input.phone) {
@@ -234,7 +236,7 @@ export const userRouter = {
         });
         return {
           ...updatedSection,
-          alreadyWatching: true as const,
+          alreadyWatching: !section.cancelledAt,
           isVerifiedAccount: student.validAccount,
           showVenmoInfo: shouldShowVenmoInfo,
           email: input.email,
@@ -300,6 +302,16 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
       };
     }),
 
+  cancelWatchedClass: publicProcedureWithUser
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await cancelWatchedSection(ctx.prisma.watchedSection, input.id, ctx.user.id, new Date());
+    }),
+
   continueReceivingNotificationsForSection: publicProcedureWithUser
     .input(
       z.object({
@@ -311,6 +323,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
         where: {
           id: input.id,
           studentId: ctx.user.id,
+          cancelledAt: null,
         },
         data: {
           notified: false,
@@ -328,6 +341,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
     await ctx.prisma.watchedSection.updateMany({
       where: {
         studentId: ctx.user.id,
+        cancelledAt: null,
       },
       data: {
         phoneOverride: phoneNumber,
@@ -346,6 +360,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
         where: {
           id: input.id,
           studentId: ctx.user.id,
+          cancelledAt: null,
         },
         data: {
           phoneOverride: input.phoneNumber,

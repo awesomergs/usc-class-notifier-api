@@ -52,6 +52,7 @@ const checkForAvailabilityForDepartment = async (department: string, semester: s
         section: { in: sectionsWithAvailability },
         semester,
         notified: false,
+        cancelledAt: null,
         student: {
           validAccount: true,
         },
@@ -193,7 +194,9 @@ const refreshSemester = async (semester: string) => {
     WHERE class_info.section IN (
       SELECT DISTINCT watched_section.section
       FROM "WatchedSection" AS watched_section
-      WHERE watched_section.semester = ${semester} AND watched_section.notified = false
+      WHERE watched_section.semester = ${semester}
+        AND watched_section.notified = false
+        AND watched_section."cancelledAt" IS NULL
     )
       AND class_info.semester = ${semester}
   `;

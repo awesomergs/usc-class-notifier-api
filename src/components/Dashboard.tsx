@@ -62,6 +62,40 @@ const NotifyButton = ({ data }: { data: Section }) => {
     </button>
   );
 };
+
+const StopWatchingButton = ({ data }: { data: Section }) => {
+  const utils = api.useUtils();
+  const { mutateAsync, isPending } = api.user.cancelWatchedClass.useMutation();
+  const courseLabel = data.ClassInfo?.courseNumber || "this class";
+
+  const submit = async () => {
+    const didConfirm = window.confirm(
+      `Stop watching ${courseLabel}, section ${data.section}? You will no longer receive alerts for it.`,
+    );
+    if (!didConfirm) {
+      return;
+    }
+
+    await toast.promise(mutateAsync({ id: data.id }), {
+      pending: "Stopping notifications",
+      success: "Stopped watching",
+      error: "Failed to stop watching",
+    });
+    await utils.user.getWatchedClasses.invalidate();
+  };
+
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center rounded-md border border-red-300 px-3 py-1 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:pointer-events-none disabled:opacity-50"
+      disabled={isPending}
+      onClick={submit}
+      aria-label={`Stop watching ${courseLabel}, section ${data.section}`}
+    >
+      Remove
+    </button>
+  );
+};
 const iconStyle = { fontSize: 14, cursor: "pointer" };
 
 const PhoneOverride = ({ data }: { data: Section }) => {
@@ -210,6 +244,13 @@ const columns = [
   { headerName: "Phone", field: "phoneOverride", cellRenderer: PhoneOverride, width: 160 },
   { headerName: "Paid", field: "isPaid", width: 80, filter: false },
   { headerName: "Notify", field: "notified", cellRenderer: NotifyButton },
+  {
+    headerName: "Actions",
+    cellRenderer: StopWatchingButton,
+    width: 120,
+    sortable: false,
+    filter: false,
+  },
 ] satisfies NonNullable<ColDef>;
 
 const EditPhoneGlobal = () => {

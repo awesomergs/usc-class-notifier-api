@@ -10,6 +10,7 @@ export const sendPaidNotificationsEmails = async () => {
     where: {
       isPaid: true,
       paidNotified: false,
+      cancelledAt: null,
     },
     include: {
       student: true,
