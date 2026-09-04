@@ -94,8 +94,13 @@ export function parseTimeRange(str: string | undefined | null): { start: string;
 
   const startHour = Number(startHourStr);
   const startMin = Number(startMinStr);
-  const endHour24 = to24Hour(Number(endHourStr), endMeridiem);
+  const endHour = Number(endHourStr);
   const endMin = Number(endMinStr);
+  if (startHour < 1 || startHour > 12 || endHour < 1 || endHour > 12 || startMin > 59 || endMin > 59) {
+    throw new Error(`time range "${str}" contains an invalid clock time`);
+  }
+
+  const endHour24 = to24Hour(endHour, endMeridiem);
   const endTotal = endHour24 * 60 + endMin;
 
   const meridiemForStart = startMeridiem ?? endMeridiem;
@@ -105,6 +110,10 @@ export function parseTimeRange(str: string | undefined | null): { start: string;
   if (!startMeridiem && startTotal > endTotal) {
     startHour24 = (startHour24 + 12) % 24;
     startTotal = startHour24 * 60 + startMin;
+  }
+
+  if (endTotal <= startTotal) {
+    throw new Error(`time range "${str}" must end after it starts`);
   }
 
   return { start: formatHHMM(startHour24, startMin), end: formatHHMM(endHour24, endMin) };

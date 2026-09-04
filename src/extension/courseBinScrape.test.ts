@@ -77,6 +77,14 @@ test("parseTimeRange: a range missing the end meridiem throws rather than guessi
   assert.throws(() => parseTimeRange("10:00-11:50"));
 });
 
+test("parseTimeRange: invalid clock values and non-positive durations throw", () => {
+  for (const value of ["00:00am-01:00am", "13:00pm-02:00pm", "10:60am-11:50am", "10:00am-11:99am"]) {
+    assert.throws(() => parseTimeRange(value), /invalid clock time/);
+  }
+  assert.throws(() => parseTimeRange("2:00pm-1:00pm"), /must end after it starts/);
+  assert.throws(() => parseTimeRange("2:00pm-2:00pm"), /must end after it starts/);
+});
+
 // expandLocation
 
 test("expandLocation: real codes from the confirmed fixture data expand to the bare name when there's no room", () => {
