@@ -47,8 +47,16 @@ export interface Meeting {
   location?: string;
 }
 
+export interface SectionSession {
+  id: string;
+  firstDay: string;
+  lastDay: string;
+  holidays?: Holiday[];
+}
+
 export interface Section {
   id: string;
+  session?: SectionSession;
   course: string;
   title: string;
   type: string;
@@ -61,16 +69,24 @@ export interface Schedule {
   sections: Section[];
 }
 
+export interface GenerateICSOptions {
+  generatedAt?: Date;
+}
+
 export function escapeText(str: string): string {
-  return String(str).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n/g, "\\n");
 }
 
 // Fold a single unfolded content line at 75 octets (UTF-8 byte count, not JS char count).
-// Continuation lines start with a single space per RFC 5545 §3.1. To avoid parsers that strip
-// all leading whitespace on unfold (rather than exactly one char), the break is nudged left off
-// a space boundary when it would otherwise land immediately before/after one.
+// Continuation lines start with a single space per RFC 5545 §3.1. A fold may occur between any
+// two characters, including next to whitespace; avoiding whitespace boundaries can move the
+// split into a multi-byte code point and corrupt the text.
 const utf8Encoder = new TextEncoder();
-const utf8Decoder = new TextDecoder("utf-8");
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 
 export function foldLine(line: string): string {
   const bytes = utf8Encoder.encode(line);
@@ -89,16 +105,6 @@ export function foldLine(line: string): string {
       // continuation byte (10xxxxxx).
       while (end > start && (bytes[end]! & 0xc0) === 0x80) {
         end--;
-      }
-      // Don't break immediately before or after a space.
-      if (bytes[end] === 0x20 || bytes[end - 1] === 0x20) {
-        let adjusted = end - 1;
-        while (adjusted > start && (bytes[adjusted] === 0x20 || bytes[adjusted - 1] === 0x20)) {
-          adjusted--;
-        }
-        if (adjusted > start) {
-          end = adjusted;
-        }
       }
     }
     chunks.push(utf8Decoder.decode(bytes.subarray(start, end)));
@@ -125,6 +131,17 @@ function dateDigits(iso: string): string {
 function localDateTimeDigits(iso: string, hhmm: string): string {
   const [hh, mm] = hhmm.split(":");
   return `${dateDigits(iso)}T${pad2(Number(hh))}${pad2(Number(mm))}00`;
+}
+
+function utcDateTimeDigits(date: Date): string {
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("generatedAt must be a valid Date");
+  }
+
+  return (
+    `${date.getUTCFullYear()}${pad2(date.getUTCMonth() + 1)}${pad2(date.getUTCDate())}` +
+    `T${pad2(date.getUTCHours())}${pad2(date.getUTCMinutes())}${pad2(date.getUTCSeconds())}Z`
+  );
 }
 
 // First date on or after firstDayISO whose weekday is in days (RFC 5545 day codes).
@@ -223,16 +240,55 @@ function resolveExdatesForMeeting(term: Term, meeting: Meeting, dtstartDate: str
     .map((h) => h.date);
 }
 
-function isMeetingAsync(meeting: Meeting): boolean {
-  return !meeting.days || meeting.days.length === 0 || !meeting.start || !meeting.end;
+function isMeetingExportable(meeting: Meeting): boolean {
+  return Boolean(meeting.days?.length && meeting.start && meeting.end);
+}
+
+export function countExportableMeetings(schedule: Schedule): number {
+  let count = 0;
+  for (const section of schedule.sections) {
+    for (const meeting of section.meetings) {
+      if (isMeetingExportable(meeting)) {
+        count++;
+      }
+    }
+  }
+  return count;
 }
 
 function buildUID(termId: string, sectionId: string, suffix: string | number): string {
-  return `${termId}-${sectionId}-${suffix}@usc-schedule-export`;
+  return `${termId}-${sectionId}-${suffix}@usc.jonlu.ca`;
 }
 
-function buildRecurringMeetingEvent(term: Term, section: Section, meeting: Meeting, meetingIndex: number): string[] {
+function termForSection(term: Term, section: Section): Term {
+  if (!section.session) {
+    return term;
+  }
+
+  const holidays = new Map<string, Holiday>();
+  for (const holiday of [...(term.holidays ?? []), ...(section.session.holidays ?? [])]) {
+    holidays.set(holiday.date, holiday);
+  }
+
+  return {
+    ...term,
+    firstDay: section.session.firstDay,
+    lastDay: section.session.lastDay,
+    holidays: [...holidays.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+function buildRecurringMeetingEvent(
+  term: Term,
+  section: Section,
+  meeting: Meeting,
+  meetingIndex: number,
+  dtstamp: string,
+): string[] {
   const dtstartDate = firstOccurrenceOnOrAfter(term.firstDay, meeting.days);
+  if (dtstartDate > term.lastDay) {
+    throw new Error(`Section ${section.id} has no meeting day within session ${section.session?.id ?? term.id}.`);
+  }
   const dtstart = localDateTimeDigits(dtstartDate, meeting.start!);
   const dtend = localDateTimeDigits(dtstartDate, meeting.end!);
   const until = localToUTCDigits(term.lastDay, "23:59:59", utcOffsetHours(term.lastDay));
@@ -243,6 +299,7 @@ function buildRecurringMeetingEvent(term: Term, section: Section, meeting: Meeti
   const lines = [
     "BEGIN:VEVENT",
     `UID:${buildUID(term.id, section.id, meetingIndex)}`,
+    `DTSTAMP:${dtstamp}`,
     `DTSTART;TZID=${TZID}:${dtstart}`,
     `DTEND;TZID=${TZID}:${dtend}`,
     `RRULE:FREQ=WEEKLY;BYDAY=${meeting.days.join(",")};UNTIL=${until}`,
@@ -262,8 +319,9 @@ function buildRecurringMeetingEvent(term: Term, section: Section, meeting: Meeti
   return lines;
 }
 
-export function generateICS(schedule: Schedule): string {
+export function generateICS(schedule: Schedule, options: GenerateICSOptions = {}): string {
   const { term, sections } = schedule;
+  const dtstamp = utcDateTimeDigits(options.generatedAt ?? new Date());
   const contentLines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -272,11 +330,12 @@ export function generateICS(schedule: Schedule): string {
   ];
 
   for (const section of sections) {
+    const sectionTerm = termForSection(term, section);
     section.meetings.forEach((meeting, meetingIndex) => {
-      if (isMeetingAsync(meeting)) {
+      if (!isMeetingExportable(meeting)) {
         return;
       }
-      contentLines.push(...buildRecurringMeetingEvent(term, section, meeting, meetingIndex));
+      contentLines.push(...buildRecurringMeetingEvent(sectionTerm, section, meeting, meetingIndex, dtstamp));
     });
   }
 

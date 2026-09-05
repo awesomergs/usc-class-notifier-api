@@ -1,7 +1,6 @@
 // DOM adapter for /CourseBin — selectors, the part that rots when the page changes. Kept in
-// its own file, separate from courseBinScrape.ts's pure parsers, because jQuery throws at import
-// time without a real window/document — pulling it into the same module as parseDays/
-// parseTimeRange would make those untestable under node:test (see CALENDAR_EXPORT_NOTES.md).
+// its own file, separate from courseBinScrape.ts's pure parsers, so the string parsers remain
+// independently testable and changes to USC's markup stay isolated here.
 //
 // Targets /CourseBin specifically: it's the only page carrying both the Time:/Days: rows and
 // the registration-state divs (schedY_regY_{id} etc.) needed to tell an actually-registered
@@ -15,7 +14,6 @@
 // src/extension/webRegPage.ts's addUnitsToTitle and src/extension/notify.ts's course-code
 // lookup, both of which already rely on this shape in production.
 
-import $ from "jquery";
 import { parseDays, parseTimeRange, expandLocation } from "@/extension/courseBinScrape";
 
 export interface RawMeeting {
@@ -27,6 +25,7 @@ export interface RawMeeting {
 
 export interface RawSection {
   id: string;
+  sessionId?: string;
   course: string;
   title: string;
   type: string;
@@ -41,121 +40,190 @@ export interface RawSection {
 // Checkout submission — hasn't taken effect yet), while schedY_regN was only ever scheduled in
 // the planner, never actually registered. Read directly off the id, not the human-readable text
 // in the sibling status divs, which says the same thing but is a less stable signal to parse.
-function isRegistered(sectionEl: Element): boolean {
-  const actionbars = $(sectionEl).find(".actionbar").toArray();
+function registrationState(sectionEl: Element): boolean | null {
+  const visibleStates: boolean[] = [];
+  const actionbars = sectionEl.querySelectorAll<HTMLElement>(".actionbar");
   for (const el of actionbars) {
     if (el.style.display !== "block") {
       continue;
     }
     const match = el.id.match(/^sched[YN]_reg([YN])_/);
     if (match) {
-      return match[1] === "Y";
+      visibleStates.push(match[1] === "Y");
     }
   }
-  return false;
+  return visibleStates.length === 1 ? visibleStates[0]! : null;
 }
 
-// .innerText (not .textContent) so a <br>-separated multi-pattern value renders as newlines —
-// same reason every existing selector in this file's siblings (webRegPage.ts, schedule.ts) reads
-// .innerText rather than .textContent.
-function labelStrippedText(row: HTMLElement): string {
-  return (row.innerText || "").replace(/^[^:]*:\s*/, "").trim();
+// DOMParser creates a detached document, so innerText does not reliably apply rendered <br>
+// line breaks. Walk the DOM instead: preserve explicit <br>s and omit the responsive label.
+// This keeps parallel Time/Days/Location values aligned even when the document has no layout.
+function textWithBreaks(node: Node): string {
+  if (node.nodeType === 3) {
+    return node.textContent ?? "";
+  }
+
+  if (node.nodeType === 1) {
+    // SAFETY: DOM nodeType 1 is the platform-defined discriminator for Element nodes.
+    const element = node as Element;
+    if (element.classList.contains("table-headers-xsmall")) {
+      return "";
+    }
+    if (element.tagName.toUpperCase() === "BR") {
+      return "\n";
+    }
+  }
+
+  return Array.from(node.childNodes, textWithBreaks).join("");
 }
 
-function labelStrippedLines(row: HTMLElement): string[] {
-  return labelStrippedText(row)
-    .split("\n")
-    .map((line) => line.trim())
+function rowValueLines(row: Element): string[] {
+  return textWithBreaks(row)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
     .filter((line) => line !== "");
 }
 
-function findRow(rows: HTMLElement[], label: string): HTMLElement | undefined {
-  return rows.find((r) => r.innerText.includes(label));
+function findRow(rows: Element[], label: string): Element | undefined {
+  return rows.find((row) => {
+    const rowLabel = row.querySelector(".table-headers-xsmall")?.textContent?.trim();
+    return rowLabel?.replace(/:\s*$/, "").toLowerCase() === label.toLowerCase();
+  });
 }
 
-function scrapeSection(sectionContainerEl: Element, course: string, title: string): RawSection | null {
+function scrapeSessionId(sectionContainerEl: Element): string | undefined {
+  const sessionLink = sectionContainerEl.querySelector(".sessLnk");
+  const textId = sessionLink?.textContent?.match(/\b(\d{3})\b/)?.[1];
+  if (textId) {
+    return textId;
+  }
+
+  const href = sessionLink?.getAttribute("href") ?? "";
+  const hrefId = href.match(/[?&]SessionId=([^&#]+)/i)?.[1];
+  return hrefId
+    ? decodeURIComponent(hrefId)
+        .trim()
+        .match(/^\d{3}$/)?.[0]
+    : undefined;
+}
+
+function scrapeSection(sectionContainerEl: Element, course: string, title: string): RawSection {
   const id = sectionContainerEl.id.replace(/^section_/, "");
-  const rows = $(sectionContainerEl).find(".section_row").toArray();
+  const rows = Array.from(sectionContainerEl.querySelectorAll(".section_row"));
 
-  const typeRow = findRow(rows, "Type:");
-  const timeRow = findRow(rows, "Time:");
-  const daysRow = findRow(rows, "Days:");
-  const locationRow = findRow(rows, "Location:");
-  const instructorRow = findRow(rows, "Instructor:");
+  const typeRow = findRow(rows, "Type");
+  const timeRow = findRow(rows, "Time");
+  const daysRow = findRow(rows, "Days");
+  const locationRow = findRow(rows, "Location");
+  const instructorRow = findRow(rows, "Instructor");
 
-  const type = typeRow ? labelStrippedText(typeRow) : "";
-  const instructor = instructorRow ? labelStrippedLines(instructorRow).join("; ") : "";
+  const type = typeRow ? rowValueLines(typeRow).join(" ") : "";
+  const instructor = instructorRow ? rowValueLines(instructorRow).join("; ") : "";
 
-  const timeLines = timeRow ? labelStrippedLines(timeRow) : [];
-  const dayLines = daysRow ? labelStrippedLines(daysRow) : [];
-  const locationLines = locationRow ? labelStrippedLines(locationRow) : [];
+  if (!timeRow || !daysRow) {
+    throw new Error(`Section ${id} is missing its Time or Days row.`);
+  }
+  const timeLines = rowValueLines(timeRow);
+  const dayLines = rowValueLines(daysRow);
+  const locationLines = locationRow ? rowValueLines(locationRow) : [];
 
-  const patternCount = Math.max(timeLines.length, dayLines.length, 1);
+  if (timeLines.length === 0 || timeLines.length !== dayLines.length) {
+    throw new Error(`Section ${id} has mismatched Time and Days rows.`);
+  }
+  const patternCount = Math.max(timeLines.length, 1);
+  if (locationLines.length > 1 && locationLines.length !== patternCount) {
+    throw new Error(`Section ${id} has mismatched meeting locations.`);
+  }
+
   const meetings: RawMeeting[] = [];
   for (let i = 0; i < patternCount; i++) {
-    const days = parseDays(dayLines[i] ?? "");
-    const range = parseTimeRange(timeLines[i] ?? "");
+    const rawDays = dayLines[i]!;
+    const rawTime = timeLines[i]!;
+    const daysUnavailable = /^(TBA|TBD)$/i.test(rawDays);
+    const timeUnavailable = /^(TBA|TBD)$/i.test(rawTime);
+    if (daysUnavailable && timeUnavailable) {
+      continue;
+    }
+    if (daysUnavailable || timeUnavailable) {
+      throw new Error(`Section ${id} has incomplete meeting data.`);
+    }
+
+    const days = parseDays(rawDays);
+    const range = parseTimeRange(rawTime);
     if (days.length === 0 || !range) {
-      continue; // async pattern — drop
+      throw new Error(`Section ${id} has incomplete meeting data.`);
     }
     const rawLocation = locationLines[i] ?? locationLines[0] ?? "";
     const location = rawLocation ? expandLocation(rawLocation) : undefined;
     meetings.push({ days, start: range.start, end: range.end, location });
   }
 
-  return { id, course, title, type, instructor, meetings };
+  return { id, sessionId: scrapeSessionId(sectionContainerEl), course, title, type, instructor, meetings };
 }
 
-function parseCourseHeader(headerEl: HTMLElement | undefined): { course: string; title: string } | null {
+function parseCourseHeader(headerEl: Element | undefined): { course: string; title: string } | null {
   if (!headerEl) {
     return null;
   }
-  const crsIdText = $(headerEl).find(".crsID").first().text().trim();
+  const crsIdText = headerEl.querySelector(".crsID")?.textContent?.trim() ?? "";
   const match = crsIdText.match(/^([A-Z]+)-(\d[\w]*)/i);
   if (!match) {
     return null;
   }
-  const course = `${match[1]!.toUpperCase()} ${match[2]}`;
-  const title = $(headerEl).find(".crsTitl").first().text().trim();
+  const course = `${match[1]!.toUpperCase()} ${match[2]!.toUpperCase()}`;
+  const title = headerEl.querySelector(".crsTitl")?.textContent?.trim() ?? "";
   return { course, title };
+}
+
+function expectedRegisteredSectionCount(doc: Document): number {
+  const status = doc.querySelector(".mycbstat")?.textContent?.replace(/\s+/g, " ").trim();
+  const match = status?.match(/Registered sections?:\s*(\d+)/i);
+  if (!match) {
+    throw new Error("WebReg course-bin markup is missing its registration summary.");
+  }
+  return Number(match[1]);
 }
 
 // Scrapes every actually-registered section out of a parsed /CourseBin document. Sections
 // still sitting in the bin (never registered) and sections only scheduled-but-not-submitted are
-// excluded. Defensive per-row: a single malformed course grouping is skipped and logged rather
-// than aborting the whole export, matching this file's siblings (webRegPage.ts, schedule.ts).
+// excluded. Parsing is intentionally strict: omitting a malformed registered section would make
+// the downloaded calendar look complete when it is not, so markup drift aborts the enhanced
+// export and lets its caller fall back to USC's official exporter.
 export function scrapeRegisteredSections(doc: Document): RawSection[] {
+  const expectedCount = expectedRegisteredSectionCount(doc);
   const sections: RawSection[] = [];
 
-  $(".accordion-content-area", doc).each(function () {
-    try {
-      const header = parseCourseHeader($(this).prev()[0]);
-      if (!header) {
-        return;
-      }
-
-      const sectionEls = $(this).find(".section_crsbin").toArray();
-      for (const sectionEl of sectionEls) {
-        try {
-          const container = sectionEl.closest(".section");
-          if (!container || !isRegistered(container)) {
-            continue;
-          }
-
-          const scraped = scrapeSection(container, header.course, header.title);
-          if (scraped) {
-            sections.push(scraped);
-          }
-        } catch (e) {
-          console.error(e);
-          console.error(`Failed to parse section ${sectionEl.id}!`);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      console.error("Failed to parse a course grouping while scraping CourseBin!");
+  for (const coursePanel of doc.querySelectorAll(".accordion-content-area")) {
+    const sectionEls = coursePanel.querySelectorAll(".section_crsbin");
+    if (sectionEls.length === 0) {
+      throw new Error("WebReg course-bin markup contains an empty course panel.");
     }
-  });
 
+    const header = parseCourseHeader(coursePanel.previousElementSibling ?? undefined);
+    if (!header) {
+      throw new Error("WebReg course-bin markup is missing a course header.");
+    }
+
+    for (const sectionEl of sectionEls) {
+      const container = sectionEl.closest(".section");
+      if (!container) {
+        throw new Error("WebReg course-bin markup is missing a section container.");
+      }
+
+      const registered = registrationState(container);
+      if (registered === null) {
+        throw new Error(`WebReg course-bin markup has an unknown registration state for ${container.id}.`);
+      }
+      if (!registered) {
+        continue;
+      }
+
+      sections.push(scrapeSection(container, header.course, header.title));
+    }
+  }
+
+  if (sections.length !== expectedCount) {
+    throw new Error(`WebReg reported ${expectedCount} registered sections, but ${sections.length} were parsed.`);
+  }
   return sections;
 }

@@ -7,10 +7,12 @@ import {
   firstOccurrenceOnOrAfter,
   utcOffsetHours,
   generateICS,
+  countExportableMeetings,
   type Schedule,
 } from "@/extension/ics";
 
 const CRLF = "\r\n";
+const GENERATED_AT = new Date("2026-08-01T12:34:56.789Z");
 
 function octetLen(str: string) {
   return new TextEncoder().encode(str).length;
@@ -24,9 +26,7 @@ function physicalLines(icsText: string) {
   return lines;
 }
 
-// Fall 2026 term per CALENDAR_EXPORT_NOTES.md. Holidays are included here (unlike
-// src/extension/uscTerms.ts, which omits them until Stage 4) purely to exercise generateICS's
-// EXDATE branch — ics.ts is general-purpose even though nothing feeds it holiday data yet.
+// Representative Fall 2026 input used to exercise recurrence, timezone, and holiday behavior.
 const fixtureSchedule: Schedule = {
   term: {
     id: "20263",
@@ -107,6 +107,10 @@ test("escapeText: backslash + semicolon + comma + newline together escape correc
   assert.equal(escapeText(input), expected);
 });
 
+test("escapeText: CRLF, bare CR, and bare LF each normalize to an escaped newline", () => {
+  assert.equal(escapeText("first\r\nsecond\rthird\nfourth"), "first\\nsecond\\nthird\\nfourth");
+});
+
 test("escapeText: real title with comma and ampersand escapes only the comma", () => {
   const input = "Leading Organizations, Teams & People";
   assert.equal(escapeText(input), "Leading Organizations\\, Teams & People");
@@ -147,6 +151,18 @@ test("foldLine: a multi-byte character positioned at the fold boundary is not sp
   assert.equal(unfoldLines(folded), line);
 });
 
+test("foldLine: whitespace next to a UTF-8 fold boundary cannot move the split into a code point", () => {
+  const line = "a".repeat(71) + "— " + "b".repeat(20);
+  const folded = foldLine(line);
+
+  for (const physical of folded.split(CRLF)) {
+    assert.ok(octetLen(physical) <= 75, `physical line exceeds 75 octets: "${physical}"`);
+    assert.ok(!physical.includes("�"), `physical line contains a corrupted character: "${physical}"`);
+  }
+
+  assert.equal(unfoldLines(folded), line);
+});
+
 // firstOccurrenceOnOrAfter
 
 test("firstOccurrenceOnOrAfter: Fall 2026 (firstDay Mon Aug 24) TTh class starts Tue Aug 25", () => {
@@ -176,7 +192,7 @@ for (const [date, expected] of dstCases) {
 
 // generateICS — structural
 
-const output = generateICS(fixtureSchedule);
+const output = generateICS(fixtureSchedule, { generatedAt: GENERATED_AT });
 const lines = physicalLines(output);
 
 test("generateICS: has balanced BEGIN/END:VCALENDAR", () => {
@@ -212,8 +228,38 @@ test("generateICS: VEVENTs are balanced", () => {
   assert.equal(begins, ends);
 });
 
+test("generateICS: every VEVENT has exactly one UTC DTSTAMP using the supplied generation time", () => {
+  const eventBlocks = unfoldLines(output)
+    .split("BEGIN:VEVENT" + CRLF)
+    .slice(1);
+  assert.ok(eventBlocks.length > 0, "expected at least one VEVENT");
+
+  for (const event of eventBlocks) {
+    const dtstamps = event.split(CRLF).filter((line) => line.startsWith("DTSTAMP:"));
+    assert.deepEqual(dtstamps, ["DTSTAMP:20260801T123456Z"]);
+  }
+});
+
+test("generateICS: rejects an invalid supplied generation time", () => {
+  assert.throws(
+    () => generateICS(fixtureSchedule, { generatedAt: new Date(Number.NaN) }),
+    /generatedAt must be a valid Date/,
+  );
+});
+
 test("generateICS: the async section (days: []) is dropped — no VEVENT references it", () => {
   assert.ok(!output.includes("30044D"));
+});
+
+test("countExportableMeetings: counts emitted meetings rather than registered sections", () => {
+  assert.equal(countExportableMeetings(fixtureSchedule), 3);
+  assert.equal(
+    countExportableMeetings({
+      term: fixtureSchedule.term,
+      sections: [{ ...fixtureSchedule.sections[3]!, meetings: [{ days: [] }] }],
+    }),
+    0,
+  );
 });
 
 test("generateICS: no physical line exceeds 75 octets", () => {
@@ -315,9 +361,100 @@ test("generateICS: TTh class does NOT exclude Sep 7, Oct 9, Nov 11, Nov 25, or N
   }
 });
 
-test("generateICS: UIDs are stable across repeated calls on the same input", () => {
-  const output2 = generateICS(fixtureSchedule);
-  assert.equal(output2, output);
+test("generateICS: each section uses its live session boundaries and merges session breaks with term holidays", () => {
+  const sessionOutput = unfoldLines(
+    generateICS(
+      {
+        term: fixtureSchedule.term,
+        sections: [
+          {
+            id: "14470",
+            session: {
+              id: "928",
+              firstDay: "2026-09-14",
+              lastDay: "2026-10-26",
+              holidays: [{ date: "2026-10-12", name: "Session break" }],
+            },
+            course: "BUAD 100",
+            title: "The Business Experience",
+            type: "Lecture",
+            instructor: "Prof. T. Trojan",
+            meetings: [{ days: ["MO", "TH"], start: "08:00", end: "09:50" }],
+          },
+        ],
+      },
+      { generatedAt: GENERATED_AT },
+    ),
+  );
+
+  assert.ok(sessionOutput.includes("DTSTART;TZID=America/Los_Angeles:20260914T080000"));
+  assert.ok(sessionOutput.includes("UNTIL=20261027T065959Z"));
+  assert.ok(sessionOutput.includes("EXDATE;TZID=America/Los_Angeles:20261008T080000,20261012T080000"));
+  assert.ok(!sessionOutput.includes("20260907T080000"), "term holiday before the session must be clipped");
+  assert.ok(!sessionOutput.includes("20261126T080000"), "term holiday after the session must be clipped");
+});
+
+test("generateICS: rejects a meeting pattern with no occurrence inside its short session", () => {
+  assert.throws(
+    () =>
+      generateICS({
+        term: fixtureSchedule.term,
+        sections: [
+          {
+            id: "15535",
+            session: { id: "701", firstDay: "2026-08-03", lastDay: "2026-08-03" },
+            course: "GSBA 501",
+            title: "The Role of the Manager",
+            type: "Lecture",
+            instructor: "Prof. T. Trojan",
+            meetings: [{ days: ["TU"], start: "08:00", end: "17:00" }],
+          },
+        ],
+      }),
+    /no meeting day within session 701/,
+  );
+});
+
+test("generateICS: supports a valid special session wholly before the main semester", () => {
+  const specialSessionOutput = unfoldLines(
+    generateICS(
+      {
+        term: fixtureSchedule.term,
+        sections: [
+          {
+            id: "15535",
+            session: { id: "701", firstDay: "2026-08-03", lastDay: "2026-08-13" },
+            course: "GSBA 501",
+            title: "The Role of the Manager",
+            type: "Lecture",
+            instructor: "Prof. T. Trojan",
+            meetings: [{ days: ["MO", "TU", "WE", "TH", "FR"], start: "08:00", end: "17:00" }],
+          },
+        ],
+      },
+      { generatedAt: GENERATED_AT },
+    ),
+  );
+
+  assert.ok(specialSessionOutput.includes("DTSTART;TZID=America/Los_Angeles:20260803T080000"));
+  assert.ok(specialSessionOutput.includes("UNTIL=20260814T065959Z"));
+});
+
+test("generateICS: UIDs are stable when the generation timestamp changes", () => {
+  const output2 = generateICS(fixtureSchedule, { generatedAt: new Date("2026-08-02T23:45:01Z") });
+  const uidLines = physicalLines(unfolded).filter((line) => line.startsWith("UID:"));
+  const uidLines2 = physicalLines(unfoldLines(output2)).filter((line) => line.startsWith("UID:"));
+
+  assert.deepEqual(uidLines2, uidLines);
+  assert.notEqual(output2, output);
+});
+
+test("generateICS: UIDs use a domain controlled by the project", () => {
+  const uidLines = physicalLines(unfolded).filter((line) => line.startsWith("UID:"));
+  assert.ok(uidLines.length > 0);
+  for (const line of uidLines) {
+    assert.match(line, /@usc\.jonlu\.ca$/);
+  }
 });
 
 test("generateICS: UIDs are unique within a single output", () => {
