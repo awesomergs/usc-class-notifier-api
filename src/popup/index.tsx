@@ -1,10 +1,17 @@
 import "@/styles/globals.css";
-import { extensionEnabledStorage, showConflictsStorage, showUnitsStorage, useStorageItem } from "@/extension/storage";
+import {
+  darkModeStorage,
+  extensionEnabledStorage,
+  showConflictsStorage,
+  showUnitsStorage,
+  useStorageItem,
+} from "@/extension/storage";
 
 function IndexPopup() {
   const [enabled, setEnabled] = useStorageItem(extensionEnabledStorage, true);
   const [showConflicts, setShowConflicts] = useStorageItem(showConflictsStorage, true);
   const [showUnits, setShowUnits] = useStorageItem(showUnitsStorage, true);
+  const [darkMode, setDarkMode] = useStorageItem(darkModeStorage, false);
   return (
     <div className={"px-4 pt-2 pb-1"}>
       <div className="border p-6 space-y-6 bg-white rounded-lg min-w-[400px]">
@@ -46,6 +53,19 @@ function IndexPopup() {
             />
             <label htmlFor="show-units" className="ml-2 text-sm font-medium text-gray-900">
               Show Units
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              id="dark-mode"
+              className="w-5 h-5 text-blue-600 bg-gray-100 rounded-sm border-gray-300 focus:ring-blue-500"
+              type="checkbox"
+              checked={darkMode}
+              onChange={() => setDarkMode(!darkMode)}
+              disabled={!enabled}
+            />
+            <label htmlFor="dark-mode" className="ml-2 text-sm font-medium text-gray-900">
+              Dark Mode (myCalendar)
             </label>
           </div>
         </div>
