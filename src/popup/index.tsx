@@ -65,7 +65,7 @@ function IndexPopup() {
               disabled={!enabled}
             />
             <label htmlFor="dark-mode" className="ml-2 text-sm font-medium text-gray-900">
-              Dark Mode (myCalendar)
+              Dark Mode (myCalendar/myCourseBin)
             </label>
           </div>
         </div>

@@ -1,20 +1,22 @@
-// Dark mode for webreg.usc.edu/Calendar. Themes the page chrome (masthead, tabs, buttons, the
-// Kendo Scheduler grid) via src/styles/webregDark.css; event and legend item colors are left
-// exactly as WebReg sets them.
+// Dark mode for webreg.usc.edu/Calendar and /CourseBin. Themes the page chrome (masthead, tabs,
+// buttons, forms) via src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar and the
+// course accordion/section table on CourseBin. Event and legend item colors on Calendar are left
+// mostly as WebReg sets them (see webregDark.css for the specific exceptions).
 
 export const DARK_MODE_CLASS = "usc-helper-dark";
 const DARK_MODE_MIRROR_KEY = "usc-helper-dark-mode";
 
-export function isCalendarPage(href: string = window.location.href): boolean {
+export function isDarkModeSupportedPage(href: string = window.location.href): boolean {
   try {
-    return new URL(href).pathname.toLowerCase().startsWith("/calendar");
+    const pathname = new URL(href).pathname.toLowerCase();
+    return pathname.startsWith("/calendar") || pathname.startsWith("/coursebin");
   } catch {
     return false;
   }
 }
 
 export function shouldEnableDarkMode(options: { enabled: boolean; darkMode: boolean }, href?: string): boolean {
-  return options.enabled && options.darkMode && isCalendarPage(href);
+  return options.enabled && options.darkMode && isDarkModeSupportedPage(href);
 }
 
 let active = false;
