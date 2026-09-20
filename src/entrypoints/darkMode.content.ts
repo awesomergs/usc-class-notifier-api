@@ -1,5 +1,5 @@
 import "@/styles/webregDark.css";
-import { isCalendarPage, readDarkModeMirror, setDarkModeActive } from "@/extension/darkMode";
+import { isDarkModeSupportedPage, readDarkModeMirror, setDarkModeActive } from "@/extension/darkMode";
 import { darkModeStorage, extensionEnabledStorage } from "@/extension/storage";
 import { defineContentScript } from "#imports";
 
@@ -15,12 +15,12 @@ export default defineContentScript({
   runAt: "document_start",
   cssInjectionMode: "manifest",
   main() {
-    if (isCalendarPage()) {
+    if (isDarkModeSupportedPage()) {
       setDarkModeActive(readDarkModeMirror());
     }
 
     void Promise.all([extensionEnabledStorage.getValue(), darkModeStorage.getValue()]).then(([enabled, darkMode]) => {
-      setDarkModeActive(enabled && darkMode && isCalendarPage());
+      setDarkModeActive(enabled && darkMode && isDarkModeSupportedPage());
     });
   },
 });

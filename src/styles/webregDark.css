@@ -1,5 +1,5 @@
 /*
- * Dark mode for webreg.usc.edu/Calendar.
+ * Dark mode for webreg.usc.edu/Calendar and /CourseBin.
  *
  * Everything below is gated behind `html.usc-helper-dark`, toggled by src/extension/darkMode.ts,
  * so this file being present in the manifest at document_start is harmless when the setting is
@@ -7,18 +7,25 @@
  * this also means every var() below should carry a light-mode fallback where it's reused by
  * src/extension/style.ts, since those fallbacks are what print resolves to.
  *
- * `.k-*` selectors target WebReg's Kendo UI Scheduler widget (confirmed by
- * src/extension/scheduleDocument.ts parsing `kendo.syncReady` payloads out of the Calendar page).
- * Bootstrap 3 selectors (`.btn`, `.alert`, `.nav-tabs`, `.panel`) target WebReg's own page chrome
- * (confirmed by the `btn btn-default` classes src/extension/calendarExport.ts relies on).
+ * `.k-*` selectors target WebReg's Kendo UI Scheduler widget on Calendar (confirmed by
+ * src/extension/scheduleDocument.ts parsing `kendo.syncReady` payloads out of the Calendar page;
+ * CourseBin loads no Kendo/calendar stylesheets at all, confirmed via devtools). Bootstrap 3
+ * selectors (`.btn`, `.alert`, `.nav-tabs`, `.panel`) target WebReg's own shared page chrome
+ * (confirmed by the `btn btn-default` classes src/extension/calendarExport.ts relies on) and apply
+ * on both pages, since the masthead/nav/footer/layout markup is identical between them.
  *
- * Event and legend item colors are left exactly as WebReg sets them (each event's fill is an
- * inline style) - we only theme the chrome around them, with three exceptions: Registered
- * (green), Scheduled (yellow), and Conflict (red) are each remapped to a darker shade of the same
- * hue, matched by their exact confirmed inline rgb() value since there is no class to key off (see
- * the Kendo Scheduler section below). The matching legend swatches (which DO have real classes,
- * .legend-scheduled/.legend-registered/.legend-conflict) are remapped to the same colors so the
- * legend stays accurate. Appointment/.legend-blocked is intentionally left untouched for now.
+ * Event and legend item colors (Calendar only) are left exactly as WebReg sets them (each event's
+ * fill is an inline style) - we only theme the chrome around them, with three exceptions:
+ * Registered (green), Scheduled (yellow), and Conflict (red) are each remapped to a darker shade
+ * of the same hue, matched by their exact confirmed inline rgb() value since there is no class to
+ * key off (see the Kendo Scheduler section below). The matching legend swatches (which DO have
+ * real classes, .legend-scheduled/.legend-registered/.legend-conflict) are remapped to the same
+ * colors so the legend stays accurate. Appointment/.legend-blocked is intentionally left untouched
+ * for now.
+ *
+ * The myCourseBin section near the end covers the course accordion, section table, search inputs,
+ * and jQuery UI dialogs specific to that page - each selector and its exact WebReg rule/value was
+ * confirmed via a devtools matched-rules report against the live page, not guessed.
  */
 
 @media screen {
@@ -226,10 +233,143 @@
   }
 
   html.usc-helper-dark .form-control,
-  html.usc-helper-dark input,
+  html.usc-helper-dark input:not([type="hidden"]):not([type="submit"]):not([type="button"]),
   html.usc-helper-dark select,
   html.usc-helper-dark textarea {
+    /* scoped to real text-like inputs so it never paints a hidden input (invisible either way) or
+       a submit/button input (styled as a link or a .btn instead, see below and the buttons
+       section above) with a visible dark box. */
     background-color: var(--ush-surface-sunken);
+    border-color: var(--ush-border-strong);
+    color: var(--ush-text);
+  }
+
+  /* ---------------------------------------------------------------- myCourseBin */
+  /* Every selector/value here was confirmed against the live /CourseBin page via a devtools
+     matched-rules report; none are guessed. .btn-default, input/select, .container/.panel/.well,
+     .page-background, #sb-site, .footer, .mycbstat, and the h1-h6/span/p/td/th text-color rules
+     above already cover this page too (same shared markup/classes as Calendar) - only classes
+     unique to the course accordion/section table needed new rules. */
+
+  html.usc-helper-dark .course-header {
+    /* beats site_styles.css: .course-header:nth-child(4n+1) { background-color: rgb(242, 241, 241) } -
+       collapses the zebra striping to one flat shade across all nth-child variants. */
+    background-color: var(--ush-surface-alt);
+  }
+
+  html.usc-helper-dark .accordion-content-area {
+    /* beats site_styles.css: .accordion-content-area { background-color: rgb(255, 255, 255);
+       border-bottom: 1px solid rgb(242, 241, 241) } */
+    background-color: var(--ush-surface);
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .bs-callout {
+    /* beats site_styles.css: .bs-callout { border-top: 1px solid rgb(238, 238, 238); border-color:
+       rgb(238, 238, 238) } - shared by both .bs-callout-default and .bs-callout-warning, whose
+       computed background was already transparent so only the border needed fixing. */
+    border-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .cb_srchtxt {
+    /* beats site_styles.css: .cb_srchtxt { background-color: rgb(255, 255, 255) } */
+    background-color: var(--ush-surface-raised);
+  }
+  html.usc-helper-dark .cb_srchCrs,
+  html.usc-helper-dark .cb_srchDept {
+    /* beats site_styles.css: .cb_srchCrs, .cb_srchDept { background-color: rgb(255, 255, 255) } -
+       these are the wrapper spans around each .lnkCrs submit button; the button itself was already
+       correctly transparent, so this white span behind it was the actual "white bar" reported. */
+    background-color: var(--ush-surface-raised);
+  }
+
+  html.usc-helper-dark .section_head,
+  html.usc-helper-dark .section_head_alt1 {
+    /* beats site_styles.css: .section_head, .section_head_alt1 { background-color: rgb(254, 254, 254);
+       border-bottom: 2px solid rgb(224, 224, 224) } */
+    background-color: var(--ush-surface-alt);
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .section-row {
+    /* beats site_styles.css: .section-row { background-color: rgb(249, 249, 249) } */
+    background-color: var(--ush-surface-alt);
+    /* the border-top is inline (style="border-top: solid 1px #F2F1F1;") on every .section-row, so
+       this alone needs !important to win regardless of which selector below also matches. */
+    border-top-color: var(--ush-border) !important;
+  }
+  html.usc-helper-dark .section:nth-child(2n + 1) .section-row {
+    /* beats site_styles.css: .section:nth-child(2n+1) .section-row { background-color: rgb(255,
+       255, 255); border-top: thin solid rgb(224, 224, 224); border-bottom: thin solid rgb(224,
+       224, 224) } - this selector's 3 classes/pseudo-classes out-specify the plain .section-row
+       rule above (2 classes + 1 type), which is why every other row was still white. A slightly
+       lighter surface than the base .section-row keeps the zebra stripe. border-top is already
+       forced by the rule above; border-bottom isn't inline, so no !important needed here. */
+    background-color: var(--ush-surface-raised);
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .section_crsbin {
+    /* beats site_styles.css: .section_crsbin { background-color: rgb(255, 255, 255) } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark input.lnkCrs {
+    /* beats site_styles.css: .lnkCrs { background-color: rgb(255, 255, 255); color: rgb(153, 153,
+       153); border: 0px solid red; text-decoration: underline } - these <input type="submit"> are
+       WebReg's underlined text links ("Search: CSCI-104 | CSCI"), not real buttons, so exclude them
+       from the generic input rule above (:not(.lnkCrs)) and style them as links instead. */
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--ush-link);
+  }
+
+  html.usc-helper-dark a.sessLnk,
+  html.usc-helper-dark a.sessLnk:link,
+  html.usc-helper-dark a.sessLnk:active {
+    /* beats site_styles.css: .sessLnk, a.sessLnk:active, a.sessLnk:link { color: rgb(153, 0, 0) } -
+       the a.sessLnk:link branch (2 classes/pseudo-classes + 1 type) out-specifies the generic
+       `html.usc-helper-dark a` rule (1 class + 2 types), since specificity compares class-count
+       before type-count. */
+    color: var(--ush-link);
+  }
+
+  html.usc-helper-dark span[style="color: #000"] {
+    /* Seat-count text ("95 of 96") is inline style="color: #000", exact full attribute value per
+       devtools - matched with `=` rather than `*=` so this can't accidentally catch an unrelated
+       inline background-color: #000000 declaration elsewhere. !important required for inline. */
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .ui-widget-content {
+    /* beats vendor_styles.css: .ui-widget-content { background-color: rgb(255, 255, 255); color:
+       rgb(34, 34, 34); border-color: rgb(170, 170, 170) }. Covers the jQuery UI dialogs (Audited
+       Courses, Pass/No Pass) and the course-search autocomplete menu, which all carry this class. */
+    background-color: var(--ush-surface-raised);
+    color: var(--ush-text);
+    border-color: var(--ush-border-strong);
+  }
+  html.usc-helper-dark .ui-widget-header {
+    /* beats vendor_styles.css: .ui-widget-header { background: url(...) ... rgb(204, 204, 204);
+       color: rgb(34, 34, 34); border-color: rgb(170, 170, 170) } - the `background` shorthand also
+       clears the tiled highlight image the vendor rule sets. */
+    background: var(--ush-surface-hover);
+    color: var(--ush-text);
+    border-color: var(--ush-border-strong);
+  }
+  html.usc-helper-dark #dialog_aud,
+  html.usc-helper-dark #dialog_PassNP,
+  html.usc-helper-dark #dialog_empty {
+    /* each is an inline background-color (rgb(255, 237, 166) or rgb(255, 255, 255) per devtools),
+       so !important is required. */
+    background-color: var(--ush-surface-raised) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .modal-content {
+    /* beats vendor_styles.css: .modal-content { background-color: rgb(255, 255, 255); border-color:
+       rgba(0, 0, 0, 0.2) } - the #SessionModal "Loading, please wait..." dialog. */
+    background-color: var(--ush-surface-raised);
     border-color: var(--ush-border-strong);
     color: var(--ush-text);
   }
