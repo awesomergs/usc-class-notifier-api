@@ -34,6 +34,6 @@ No generated files are checked into the source archive. WXT and Vite bundle the 
 2. Open a course with instructor results. The extension adds a `PROF RATING` column with Rate My Professors links when matching rating data exists.
 3. The extension adds notification controls to eligible section rows. Clicking one opens a form that clearly shows the selected class and requests an email address plus an optional phone number.
 4. Visit `https://webreg.usc.edu/` while authenticated with USC. The extension adds schedule conflict and unit information and an Export to Calendar link.
-5. Use the toolbar popup to enable or disable the extension, conflict highlighting, and unit totals.
+5. Use the toolbar popup to enable or disable the extension, conflict highlighting, unit totals, and dark mode for the myCalendar page.
 
-The add-on stores only those three display preferences in extension local storage. A submitted notification request sends the entered email address, optional phone number, and the selected class's department, section, and semester to the service described above.
+The add-on stores only those four display preferences in extension local storage. A submitted notification request sends the entered email address, optional phone number, and the selected class's department, section, and semester to the service described above.

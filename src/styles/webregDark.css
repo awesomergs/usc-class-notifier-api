@@ -1,0 +1,386 @@
+/*
+ * Dark mode for webreg.usc.edu/Calendar.
+ *
+ * Everything below is gated behind `html.usc-helper-dark`, toggled by src/extension/darkMode.ts,
+ * so this file being present in the manifest at document_start is harmless when the setting is
+ * off. Scoped to @media screen so print output (WebReg's "Export Calendar to PDF") is untouched -
+ * this also means every var() below should carry a light-mode fallback where it's reused by
+ * src/extension/style.ts, since those fallbacks are what print resolves to.
+ *
+ * `.k-*` selectors target WebReg's Kendo UI Scheduler widget (confirmed by
+ * src/extension/scheduleDocument.ts parsing `kendo.syncReady` payloads out of the Calendar page).
+ * Bootstrap 3 selectors (`.btn`, `.alert`, `.nav-tabs`, `.panel`) target WebReg's own page chrome
+ * (confirmed by the `btn btn-default` classes src/extension/calendarExport.ts relies on).
+ *
+ * Event and legend item colors are left exactly as WebReg sets them (each event's fill is an
+ * inline style) - we only theme the chrome around them, with three exceptions: Registered
+ * (green), Scheduled (yellow), and Conflict (red) are each remapped to a darker shade of the same
+ * hue, matched by their exact confirmed inline rgb() value since there is no class to key off (see
+ * the Kendo Scheduler section below). The matching legend swatches (which DO have real classes,
+ * .legend-scheduled/.legend-registered/.legend-conflict) are remapped to the same colors so the
+ * legend stays accurate. Appointment/.legend-blocked is intentionally left untouched for now.
+ */
+
+@media screen {
+  html.usc-helper-dark {
+    color-scheme: dark;
+
+    /* surfaces */
+    --ush-surface: #0d0d0d;
+    --ush-surface-raised: #161616;
+    --ush-surface-sunken: #0a0a0a;
+    --ush-surface-hover: #232323;
+    --ush-surface-alt: #131313;
+
+    /* lines */
+    --ush-border: #2a2a2a;
+    --ush-border-strong: #3d3d3d;
+
+    /* type */
+    --ush-text: #e8e8ec;
+    --ush-text-muted: #9a9aa2;
+    --ush-link: #ff9a9a;
+    --ush-link-hover: #ffb8b8;
+
+    /* USC identity - kept saturated, masthead + active tab only */
+    --ush-cardinal: #8b0000;
+    --ush-cardinal-deep: #3d0000;
+    --ush-gold: #ffc72c;
+    --ush-gold-ink: #241a00;
+
+    /* used by src/extension/style.ts overlays */
+    --ush-overlap-bg: rgba(255, 167, 38, 0.28);
+    --ush-closed-bg: rgba(229, 115, 96, 0.24);
+    --ush-closed-overlap-bg: linear-gradient(to right, rgba(200, 90, 60, 0.35), rgba(190, 100, 40, 0.28));
+
+    background: var(--ush-surface) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark body {
+    background: var(--ush-surface) !important;
+    /* CssBaseline (injected by our own React root at idle) writes body { color: rgba(0,0,0,.87) }
+       via a prepended emotion cache, which loads after this sheet - !important is required. */
+    color: var(--ush-text) !important;
+  }
+
+  /* ---------------------------------------------------------------- WebReg page ground */
+  /* html/body being dark isn't enough: WebReg wraps the page in its own layout elements that set
+     an explicit light background, which sit visually on top and show as light gutters/strips. */
+
+  html.usc-helper-dark .page-background {
+    /* beats site_styles.css: .page-background { background: rgb(239, 238, 234); ... } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark #sb-site {
+    /* beats site_styles.css: #sb-site { background-color: rgb(255, 255, 255) } - the id must be
+       repeated here since a plain class chain can't out-specificity a bare id selector. */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark .outer-layout-footer,
+  html.usc-helper-dark .footer {
+    /* beats site_styles.css: .outer-layout-footer / .footer { background-color: rgb(211, 210, 204) } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark .mycbstat {
+    /* beats site_styles.css: .mycbstat { background-color: rgb(248, 248, 248); color: rgb(124, 124, 124) }
+       Only the background needs fixing here - the `span` rule further down already wins on
+       specificity over WebReg's color declaration, which is why the text was readable but the
+       background wasn't. */
+    background-color: var(--ush-surface-raised);
+  }
+
+  /* ---------------------------------------------------------------- page chrome (Bootstrap 3) */
+
+  html.usc-helper-dark .container,
+  html.usc-helper-dark .container-fluid,
+  html.usc-helper-dark .panel,
+  html.usc-helper-dark .panel-body,
+  html.usc-helper-dark .well,
+  html.usc-helper-dark #content {
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+    color: var(--ush-text);
+  }
+
+  html.usc-helper-dark a {
+    color: var(--ush-link);
+  }
+  html.usc-helper-dark a:hover,
+  html.usc-helper-dark a:focus {
+    color: var(--ush-link-hover);
+  }
+
+  html.usc-helper-dark h1,
+  html.usc-helper-dark h2,
+  html.usc-helper-dark h3,
+  html.usc-helper-dark h4,
+  html.usc-helper-dark h5,
+  html.usc-helper-dark h6,
+  html.usc-helper-dark label,
+  html.usc-helper-dark p,
+  html.usc-helper-dark span,
+  html.usc-helper-dark td,
+  html.usc-helper-dark th {
+    color: var(--ush-text);
+  }
+  html.usc-helper-dark .text-muted,
+  html.usc-helper-dark small {
+    color: var(--ush-text-muted);
+  }
+  html.usc-helper-dark hr,
+  html.usc-helper-dark .panel-heading {
+    border-color: var(--ush-border);
+  }
+
+  /* ---------------------------------------------------------------- masthead + nav tabs */
+
+  html.usc-helper-dark .navbar,
+  html.usc-helper-dark .navbar-default,
+  html.usc-helper-dark #header {
+    background: linear-gradient(180deg, var(--ush-cardinal), var(--ush-cardinal-deep)) !important;
+    background-image: linear-gradient(180deg, var(--ush-cardinal), var(--ush-cardinal-deep)) !important;
+    border-color: var(--ush-cardinal-deep) !important;
+    color: #fff !important;
+  }
+  html.usc-helper-dark .navbar a,
+  html.usc-helper-dark #header a {
+    color: #fff;
+  }
+
+  html.usc-helper-dark .nav-tabs {
+    border-bottom-color: var(--ush-border);
+  }
+  html.usc-helper-dark .nav-tabs > li > a {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--ush-text);
+  }
+  html.usc-helper-dark .nav-tabs > li > a:hover {
+    background-color: var(--ush-surface-hover);
+    border-color: transparent;
+  }
+  html.usc-helper-dark .nav-tabs > li.active > a,
+  html.usc-helper-dark .nav-tabs > li.active > a:hover,
+  html.usc-helper-dark .nav-tabs > li.active > a:focus {
+    background-color: var(--ush-gold) !important;
+    border-color: var(--ush-gold) !important;
+    color: var(--ush-gold-ink) !important;
+  }
+
+  /* ---------------------------------------------------------------- alerts / banners */
+
+  html.usc-helper-dark .alert-info {
+    background-color: #10202b;
+    border-color: #1d3a4d;
+    color: #cfe6f5;
+  }
+  html.usc-helper-dark .alert-warning {
+    background-color: #2b2411;
+    border-color: #4d3f1d;
+    color: #f0e0b8;
+  }
+  html.usc-helper-dark .alert-danger {
+    background-color: #2b1312;
+    border-color: #4d201d;
+    color: #f2c9c6;
+  }
+  html.usc-helper-dark .alert-success {
+    background-color: #12241a;
+    border-color: #204d31;
+    color: #c6e8d3;
+  }
+  html.usc-helper-dark .alert a,
+  html.usc-helper-dark .alert .close {
+    color: inherit;
+  }
+
+  /* ---------------------------------------------------------------- buttons, inputs */
+
+  html.usc-helper-dark .btn-default,
+  html.usc-helper-dark .usc-helper-ics-export,
+  html.usc-helper-dark #export {
+    background: var(--ush-surface-hover) !important;
+    background-image: none !important;
+    border-color: var(--ush-border-strong) !important;
+    color: var(--ush-text) !important;
+    text-shadow: none !important;
+  }
+  html.usc-helper-dark .btn-default:hover,
+  html.usc-helper-dark .usc-helper-ics-export:hover,
+  html.usc-helper-dark #export:hover {
+    background: var(--ush-border-strong) !important;
+  }
+  html.usc-helper-dark .btn-primary {
+    background: #1d4e77 !important;
+    background-image: none !important;
+    border-color: #2a6fa8 !important;
+    color: #fff !important;
+  }
+  html.usc-helper-dark .btn[disabled],
+  html.usc-helper-dark .btn.disabled {
+    opacity: 0.45;
+  }
+
+  html.usc-helper-dark .form-control,
+  html.usc-helper-dark input,
+  html.usc-helper-dark select,
+  html.usc-helper-dark textarea {
+    background-color: var(--ush-surface-sunken);
+    border-color: var(--ush-border-strong);
+    color: var(--ush-text);
+  }
+
+  /* ---------------------------------------------------------------- Kendo Scheduler */
+  /* Both k-state-* (older Kendo) and unprefixed (newer Kendo) names are covered since the exact
+     Kendo version WebReg ships is unconfirmed. */
+
+  html.usc-helper-dark .k-widget,
+  html.usc-helper-dark .k-scheduler {
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-toolbar,
+  html.usc-helper-dark .k-header,
+  html.usc-helper-dark .k-scheduler .k-toolbar {
+    background: var(--ush-surface-raised) !important;
+    background-image: none !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-navigation .k-link,
+  html.usc-helper-dark .k-scheduler-views .k-link,
+  html.usc-helper-dark .k-button {
+    background: var(--ush-surface-hover) !important;
+    background-image: none !important;
+    border-color: var(--ush-border-strong) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-views .k-state-selected,
+  html.usc-helper-dark .k-scheduler-views .k-selected {
+    background: var(--ush-gold) !important;
+    color: var(--ush-gold-ink) !important;
+    border-color: var(--ush-gold) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-header,
+  html.usc-helper-dark .k-scheduler-header-wrap,
+  html.usc-helper-dark .k-scheduler-header th,
+  html.usc-helper-dark .k-scheduler-head {
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-times,
+  html.usc-helper-dark .k-scheduler-times th,
+  html.usc-helper-dark .k-scheduler-timecolumn {
+    background-color: var(--ush-surface-sunken) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text-muted) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-content,
+  html.usc-helper-dark .k-scheduler-layout,
+  html.usc-helper-dark .k-scheduler-table {
+    background-color: var(--ush-surface) !important;
+  }
+  html.usc-helper-dark .k-scheduler-table td,
+  html.usc-helper-dark .k-scheduler-table th,
+  html.usc-helper-dark .k-scheduler-content td {
+    border-color: var(--ush-border) !important;
+  }
+  html.usc-helper-dark .k-nonwork-hour,
+  html.usc-helper-dark .k-weekend,
+  html.usc-helper-dark .k-alt,
+  html.usc-helper-dark .k-scheduler-table .k-middle-row {
+    background-color: var(--ush-surface-alt) !important;
+  }
+  html.usc-helper-dark .k-today {
+    background-color: rgba(255, 199, 44, 0.07) !important;
+  }
+  html.usc-helper-dark .k-current-time {
+    background-color: var(--ush-gold) !important;
+  }
+
+  /* Event item colors are left exactly as WebReg sets them (inline, per event), except
+     Registered/Scheduled/Conflict - each confirmed via devtools to be an inline background-color
+     with no class carrying the color, so each can only be targeted by matching its exact inline
+     value. !important is required to beat an inline style. */
+
+  /* Registered: style="background-color: rgb(60, 167, 15); border-color: rgb(60, 167, 15)".
+     Text stays WebReg's own white (vendor_kendo_styles.css: .k-event { color: rgb(255, 255, 255) }),
+     which already reads fine against the darker green. */
+  html.usc-helper-dark .k-event[style*="background-color: rgb(60, 167, 15)"] {
+    background-color: #1f4d33 !important;
+    border-color: #2e6b47 !important;
+  }
+
+  /* Scheduled: style="background-color: rgb(255, 204, 0); border-color: rgb(255, 204, 0)".
+     These also carry Kendo's own .k-event-inverse class (vendor_kendo_styles.css:
+     .k-event.k-event-inverse { color: rgb(0, 0, 0) }), which forces black text for legibility on
+     the original bright yellow. Black text would vanish on the darkened fill, so it's flipped to
+     the theme's light text color here - no !important needed since this selector already
+     out-specifies Kendo's two-class rule. */
+  html.usc-helper-dark .k-event.k-event-inverse[style*="background-color: rgb(255, 204, 0)"] {
+    background-color: #6b5410 !important;
+    border-color: #8a6f1f !important;
+    color: var(--ush-text);
+  }
+
+  /* Conflict: style="background-color: rgb(255, 0, 0); border-color: rgb(255, 0, 0)". Text is
+     already white via the base .k-event rule, so no color override is needed. */
+  html.usc-helper-dark .k-event[style*="background-color: rgb(255, 0, 0)"] {
+    background-color: #6b1f1f !important;
+    border-color: #8a2f2f !important;
+  }
+
+  html.usc-helper-dark .k-event.k-state-selected,
+  html.usc-helper-dark .k-event.k-selected {
+    outline: 1px solid var(--ush-gold);
+  }
+
+  /* Legend swatches (calendar_styles.css: .legend-scheduled/.legend-registered/.legend-conflict,
+     each a plain class-based background-color, no inline style, no !important) - remapped to the
+     same darkened values as their matching event fills above so the legend stays accurate.
+     .legend-blocked (Appointment) is intentionally left alone. */
+  html.usc-helper-dark .legend-scheduled {
+    background-color: #6b5410;
+  }
+  html.usc-helper-dark .legend-registered {
+    background-color: #1f4d33;
+  }
+  html.usc-helper-dark .legend-conflict {
+    background-color: #6b1f1f;
+  }
+
+  html.usc-helper-dark .k-scheduler-content::-webkit-scrollbar {
+    background: var(--ush-surface-sunken);
+  }
+  html.usc-helper-dark .k-scheduler-content::-webkit-scrollbar-thumb {
+    background: var(--ush-border-strong);
+    border-radius: 4px;
+  }
+
+  /* ---------------------------------------------------------------- our own injected UI */
+
+  html.usc-helper-dark .Toastify__toast {
+    background: var(--ush-surface-raised);
+    color: var(--ush-text);
+  }
+}
+
+@media print {
+  /* Belt-and-braces: everything above is already scoped to @media screen and colors event/legend
+     elements by class rather than inline style, so print should already be untouched. This is a
+     safety net in case a future rule slips outside that block. */
+  html.usc-helper-dark,
+  html.usc-helper-dark body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
