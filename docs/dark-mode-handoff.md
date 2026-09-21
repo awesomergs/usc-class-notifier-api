@@ -2,8 +2,8 @@
 
 Branch: `dark-mode`. Working tree currently has uncommitted changes to
 `src/extension/darkMode.ts`, `src/extension/darkMode.test.ts`, and
-`src/styles/webregDark.css` (Departments/Courses guard widening + fixes below),
-not yet committed as of 2026-09-21.
+`src/styles/webregDark.css` (guard widened through `/RegistrationAppointment`
++ fixes below), not yet committed as of 2026-09-21.
 
 ## Status
 
@@ -13,26 +13,42 @@ Implemented and verified live by the user: `/Calendar` (Kendo Scheduler),
 matched-rules reports the user ran and pasted back, then verified live after a
 production build.
 
-Not started: `/TuitionRefundInsurance`. Same working method applies: get a
-matched-rules report before writing any selector.
+Guard widened and verified live (page ground/chrome only — most of these
+pages have no page-specific CSS of their own, they just inherit the
+Bootstrap-chrome/course-accordion/section-table rules already written for
+Calendar/CourseBin/Departments/Courses):
+- `/TuitionRefundInsurance` — guard only, no dedicated CSS needed.
+- `/Checkout` — guard, plus `.RegAdDrpTitl` (register/drop banner) and
+  `.accordion-content-area` left-border fix (see Site facts below).
+- `/ClearedSections` — guard only, verified in its empty state; populated
+  state not yet screenshotted.
+- `/RegisteredCourses` — guard only, populated course list verified.
+- `/RegistrationAppointment` — guard, plus `.permit-background` card-surface
+  fix (see Site facts below).
+
+Not started: none currently queued. Ask the user for the next page and a
+matched-rules report before writing any new selector.
 
 ## Files
 
 - `src/extension/darkMode.ts` — the page guard. `isDarkModeSupportedPage(href)`
   lowercases the pathname and checks `startsWith` against `/calendar`,
-  `/coursebin`, `/departments`, `/courses` — the single list to extend for a
-  new page. `shouldEnableDarkMode(options, href)` additionally requires the
-  extension enabled + the setting on. `setDarkModeActive(enabled)` toggles
+  `/coursebin`, `/departments`, `/courses`, `/tuitionrefundinsurance`,
+  `/checkout`, `/clearedsections`, `/registeredcourses`, and
+  `/registrationappointment` — the single list to extend for a new page.
+  `shouldEnableDarkMode(options, href)` additionally requires the extension
+  enabled + the setting on. `setDarkModeActive(enabled)` toggles
   `html.usc-helper-dark` and mirrors to `localStorage` for synchronous
   first-paint reads; `readDarkModeMirror()` reads that mirror back.
 - `src/entrypoints/darkMode.content.ts` — second WXT content script, matches
   `*://webreg.usc.edu/*` (all paths, no page filtering), so widening the guard
   above is the only change needed to support a new page.
-- `src/styles/webregDark.css` (~575 lines) — the entire theme, one file, all
+- `src/styles/webregDark.css` (~600 lines) — the entire theme, one file, all
   rules scoped `html.usc-helper-dark ...` inside `@media screen`. Sections
   top-to-bottom: palette → WebReg page ground → Bootstrap 3 chrome → masthead
-  - nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
-    Kendo Scheduler → event/legend colors → our own injected UI.
+  + nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
+  Checkout → Registration Appointment → Kendo Scheduler → event/legend colors
+  → our own injected UI.
 - `src/extension/style.ts` — pre-existing light-mode overlay rules
   (`.overlaps`, `.closed`, `.closedAndOverlaps`, `.crsTitlCustom`) written as
   `var(--ush-x, <original literal>)` so they auto-adapt in dark mode and still
@@ -66,12 +82,12 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   `.k-event.k-event-inverse[style*="background-color: rgb(255, 204, 0)"]`
   (Scheduled — also has Kendo's own `.k-event-inverse` forcing black text,
   flipped back to `--ush-text`), `.k-event[style*="background-color: rgb(255,
-0, 0)"]` (Conflict).
+  0, 0)"]` (Conflict).
 - Zebra-stripe specificity traps recur: CourseBin's
   `.course-header:nth-child(4n+1)`, Departments'
   `.department-header:nth-child(4n+3)`, and Courses'
   `.section:nth-child(2n+1) .section-row` each needed an `html.usc-helper-dark
-.foo` override with a matching or higher class count to win — plain
+  .foo` override with a matching or higher class count to win — plain
   `.foo { background: ... }` loses to these every time.
 - The generic input rule excludes by `[type]`, not by class:
   `input:not([type="hidden"]):not([type="submit"]):not([type="button"])` —
@@ -82,6 +98,34 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   links carry the same border-color unmodified and read fine on the dark
   background, so overriding it only on the disabled item made its outline the
   only one that went missing.
+- `/TuitionRefundInsurance`, `/Checkout`, and `/RegistrationAppointment` have
+  no `.container.inner-container` — content sits directly under `#sb-site >
+  .row.main-container > .col-* > .content-wrapper-*` (`-regconfirm`,
+  `-regconfirm`, `-permit` respectively). No wrapper-specific rule was ever
+  needed for the page ground: it comes for free from the unconditional
+  `html.usc-helper-dark` / `body` / `.page-background` / `#sb-site` rules,
+  which aren't scoped to any wrapper class. `/ClearedSections` and
+  `/RegisteredCourses` *do* have `.inner-container` and share
+  `.content-wrapper-clearedList`.
+- `.RegAdDrpTitl` (Checkout's "You are about to REGISTER/DROP for the
+  following sections:" banner) is a single class shared by both the REGISTER
+  and DROP variants (confirmed: the report keys the WebReg rule off the class
+  alone, not the text), so one rule covers both — beats `site_styles.css:
+  .RegAdDrpTitl { background-color: rgb(102, 102, 102); color: rgb(255, 255,
+  255); padding: 3px }`.
+- `.accordion-content-area` needed both `border-bottom-color` and
+  `border-left-color` mapped to `--ush-border` — `site_styles.css` sets both
+  as separate declarations in the same rule (`border-bottom: 1px solid
+  rgb(242, 241, 241); border-left: 1px solid rgb(242, 241, 241)`); no
+  `border-right`/`border-top` declared, so none added.
+- `.permit-background` (RegistrationAppointment's date card) is
+  `site_styles.css: .permit-background { background-color: rgb(241, 241,
+  241); border: thin solid rgb(220, 220, 220); border-color: rgb(220, 220,
+  220) }` — background/border only, no `color` on the element or its child
+  `div`/`span` (report showed "no matching page rules" for those), so the
+  date text already inherits `--ush-text` once the card background goes dark;
+  no separate text-color override was needed. `radius=0px` in the computed
+  report, so no `border-radius` was added.
 
 ## Open / deferred items
 
@@ -97,8 +141,20 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   decided or implemented.
 - Popup checkbox label ("Dark Mode (myCalendar/myCourseBin)") and
   `SOURCE_CODE_REVIEW.md` line ~37 still only mention Calendar/CourseBin, not
-  Departments/Courses — flagged, not updated (copy change, out of scope for
-  the CSS/guard work done so far).
+  any of the later pages — flagged, not updated (copy change, out of scope
+  for the CSS/guard work done so far).
+- `/ClearedSections` populated state (with actual cleared-section data,
+  reusing Courses-style course-header/section-table markup) hasn't been
+  screenshotted — only the empty state has. Don't assume it's covered without
+  checking; it should be, by the same shared-class rules RegisteredCourses
+  uses, but hasn't been confirmed live.
+- `/ClearedSections`'s `#result2` inline yellow banner (`background-color:
+  rgb(255, 216, 0); color: rgb(153, 0, 0)`, `display: none` by default) was
+  noted but never triggered/verified — if it ever shows, it may need the same
+  inline-override treatment as `#dialog_aud` etc. in myCourseBin.
+- `/RegisteredCourses`'s red inline `Closed` span (`style="color: #ff0000"`)
+  was flagged for checking but no report/screenshot confirming it reads fine
+  (or needs its own rule) has come back yet.
 
 ## Working method
 
@@ -109,7 +165,9 @@ report is referenced but missing. Targeted selectors only, no `*`/bare
 `div`/broad `[class*=]` sweeps. `!important` only where evidence shows an
 inline style or a WebReg `!important` being beaten, stated per rule. Keep
 diffs to exactly what's asked; respect "out of scope" lists literally; flag
-adjacent issues rather than silently fixing them.
+adjacent issues rather than silently fixing them. Guard-widening rounds are
+kept strictly separate from CSS rounds (widen the guard with no new CSS
+first, verify live, then fix specific elements in a follow-up round).
 
 After every change: `corepack pnpm typecheck`, `lint`, `format`, `test`, then
 `NODE_ENV=production corepack pnpm build:chrome` (plain `pnpm` isn't on PATH

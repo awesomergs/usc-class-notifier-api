@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isDarkModeSupportedPage, shouldEnableDarkMode } from "@/extension/darkMode";
 
-test("isDarkModeSupportedPage matches Calendar, CourseBin, Departments, Courses, TuitionRefundInsurance, Checkout, and ClearedSections paths, case-insensitively", () => {
+test("isDarkModeSupportedPage matches Calendar, CourseBin, Departments, Courses, TuitionRefundInsurance, Checkout, ClearedSections, RegisteredCourses, and RegistrationAppointment paths, case-insensitively", () => {
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/Calendar"), true);
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/calendar/details"), true);
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/CourseBin"), true);
@@ -17,6 +17,10 @@ test("isDarkModeSupportedPage matches Calendar, CourseBin, Departments, Courses,
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/checkout/CheckoutResponse"), true);
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/ClearedSections"), true);
   assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/clearedsections"), true);
+  assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/RegisteredCourses"), true);
+  assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/registeredcourses"), true);
+  assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/RegistrationAppointment"), true);
+  assert.equal(isDarkModeSupportedPage("https://webreg.usc.edu/registrationappointment"), true);
 });
 
 test("isDarkModeSupportedPage rejects other WebReg pages and invalid URLs", () => {
@@ -32,6 +36,8 @@ test("shouldEnableDarkMode requires the extension enabled, the setting on, and a
   const tuitionRefundInsuranceUrl = "https://webreg.usc.edu/TuitionRefundInsurance";
   const checkoutUrl = "https://webreg.usc.edu/Checkout";
   const clearedSectionsUrl = "https://webreg.usc.edu/ClearedSections";
+  const registeredCoursesUrl = "https://webreg.usc.edu/RegisteredCourses";
+  const registrationAppointmentUrl = "https://webreg.usc.edu/RegistrationAppointment";
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, calendarUrl), true);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, courseBinUrl), true);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, departmentsUrl), true);
@@ -39,6 +45,8 @@ test("shouldEnableDarkMode requires the extension enabled, the setting on, and a
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, tuitionRefundInsuranceUrl), true);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, checkoutUrl), true);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, clearedSectionsUrl), true);
+  assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, registeredCoursesUrl), true);
+  assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, registrationAppointmentUrl), true);
   assert.equal(shouldEnableDarkMode({ enabled: false, darkMode: true }, courseBinUrl), false);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: false }, courseBinUrl), false);
   assert.equal(shouldEnableDarkMode({ enabled: true, darkMode: true }, "https://webreg.usc.edu/myInfo"), false);

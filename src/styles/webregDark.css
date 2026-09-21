@@ -439,6 +439,18 @@
     border-bottom: 1px solid var(--ush-border);
   }
 
+  /* ---------------------------------------------------------------- Registration Appointment */
+
+  html.usc-helper-dark .permit-background {
+    /* beats site_styles.css: .permit-background { background-color: rgb(241, 241, 241); border:
+       thin solid rgb(220, 220, 220); border-color: rgb(220, 220, 220) } - no color is set by
+       WebReg on this element or its child div/span (confirmed by the report: "no matching page
+       rules" for both), so the appointment date text already inherits --ush-text correctly once
+       the background is dark; only the card surface itself needs remapping. */
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+  }
+
   /* ---------------------------------------------------------------- Kendo Scheduler */
   /* Both k-state-* (older Kendo) and unprefixed (newer Kendo) names are covered since the exact
      Kendo version WebReg ships is unconfirmed. */
