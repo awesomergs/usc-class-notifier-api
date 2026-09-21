@@ -1,7 +1,9 @@
-// Dark mode for webreg.usc.edu/Calendar and /CourseBin. Themes the page chrome (masthead, tabs,
-// buttons, forms) via src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar and the
-// course accordion/section table on CourseBin. Event and legend item colors on Calendar are left
-// mostly as WebReg sets them (see webregDark.css for the specific exceptions).
+// Dark mode for webreg.usc.edu/Calendar, /CourseBin, /Departments, /Courses,
+// /TuitionRefundInsurance, /Checkout, and /ClearedSections. Themes the page chrome (masthead,
+// tabs, buttons, forms) via src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar
+// and the course accordion/section table shared by CourseBin, Courses, Checkout, and
+// ClearedSections. Event and legend item colors on Calendar are left mostly as WebReg sets them
+// (see webregDark.css for the specific exceptions).
 
 export const DARK_MODE_CLASS = "usc-helper-dark";
 const DARK_MODE_MIRROR_KEY = "usc-helper-dark-mode";
@@ -9,7 +11,15 @@ const DARK_MODE_MIRROR_KEY = "usc-helper-dark-mode";
 export function isDarkModeSupportedPage(href: string = window.location.href): boolean {
   try {
     const pathname = new URL(href).pathname.toLowerCase();
-    return pathname.startsWith("/calendar") || pathname.startsWith("/coursebin");
+    return (
+      pathname.startsWith("/calendar") ||
+      pathname.startsWith("/coursebin") ||
+      pathname.startsWith("/departments") ||
+      pathname.startsWith("/courses") ||
+      pathname.startsWith("/tuitionrefundinsurance") ||
+      pathname.startsWith("/checkout") ||
+      pathname.startsWith("/clearedsections")
+    );
   } catch {
     return false;
   }
