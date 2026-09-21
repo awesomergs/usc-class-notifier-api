@@ -1,8 +1,9 @@
 // Dark mode for webreg.usc.edu/Calendar, /CourseBin, /Departments, /Courses,
-// /TuitionRefundInsurance, /Checkout, and /ClearedSections. Themes the page chrome (masthead,
-// tabs, buttons, forms) via src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar
-// and the course accordion/section table shared by CourseBin, Courses, Checkout, and
-// ClearedSections. Event and legend item colors on Calendar are left mostly as WebReg sets them
+// /TuitionRefundInsurance, /Checkout, /ClearedSections, /RegisteredCourses, and
+// /RegistrationAppointment. Themes the page chrome (masthead, tabs, buttons, forms) via
+// src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar and the course
+// accordion/section table shared by CourseBin, Courses, Checkout, ClearedSections, and
+// RegisteredCourses. Event and legend item colors on Calendar are left mostly as WebReg sets them
 // (see webregDark.css for the specific exceptions).
 
 export const DARK_MODE_CLASS = "usc-helper-dark";
@@ -18,7 +19,9 @@ export function isDarkModeSupportedPage(href: string = window.location.href): bo
       pathname.startsWith("/courses") ||
       pathname.startsWith("/tuitionrefundinsurance") ||
       pathname.startsWith("/checkout") ||
-      pathname.startsWith("/clearedsections")
+      pathname.startsWith("/clearedsections") ||
+      pathname.startsWith("/registeredcourses") ||
+      pathname.startsWith("/registrationappointment")
     );
   } catch {
     return false;
