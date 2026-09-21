@@ -259,9 +259,10 @@
 
   html.usc-helper-dark .accordion-content-area {
     /* beats site_styles.css: .accordion-content-area { background-color: rgb(255, 255, 255);
-       border-bottom: 1px solid rgb(242, 241, 241) } */
+       border-bottom: 1px solid rgb(242, 241, 241); border-left: 1px solid rgb(242, 241, 241) } */
     background-color: var(--ush-surface);
     border-bottom-color: var(--ush-border);
+    border-left-color: var(--ush-border);
   }
 
   html.usc-helper-dark .bs-callout {
@@ -372,6 +373,70 @@
     background-color: var(--ush-surface-raised);
     border-color: var(--ush-border-strong);
     color: var(--ush-text);
+  }
+
+  /* ---------------------------------------------------------------- myDepartments */
+  html.usc-helper-dark .department-header {
+    /* beats site_styles.css and department_styles.css (identical rule in both):
+       .department-header:nth-child(4n+3) { background-color: rgb(242, 241, 241) } - collapses the
+       zebra striping to one flat shade across all nth-child variants, same fix as .course-header
+       above. Specificity: their rule is 2 classes/pseudo-classes + 0 types; this rule is 2 classes
+       + 1 type (html), so it wins without !important. */
+    background-color: var(--ush-surface-alt);
+  }
+
+  html.usc-helper-dark .dept_srchGo {
+    /* beats site_styles.css: .dept_srchGo { background-color: rgb(224, 224, 224); border: 0px;
+       border-color: currentcolor; border-bottom: 0px } - the "Find" submit button next to the
+       Program search box, shared markup on /Departments and /Courses. text color was already
+       fine (inherits from the generic dark-mode text color), only the light gray fill needed
+       fixing. Specificity: their rule is 1 class + 0 types; this rule is 2 classes + 1 type, so
+       it wins without !important. */
+    background-color: var(--ush-surface-hover);
+  }
+  html.usc-helper-dark .dept_srchGo:hover,
+  html.usc-helper-dark .dept_srchGo:focus {
+    /* WebReg has no dedicated :hover/:focus rule for .dept_srchGo (browser defaults only), so this
+       just gives it the same hover feedback as the other buttons (.btn-default:hover) above. */
+    background-color: var(--ush-border-strong);
+  }
+
+  /* ---------------------------------------------------------------- myCourses */
+  html.usc-helper-dark .crsPgDeptInfo {
+    /* beats site_styles.css: .crsPgDeptInfo { color: rgb(81, 81, 81); border-bottom: 2px solid
+       rgb(236, 236, 236) } - color was already overridden by the generic p/span text-color rule
+       above, only the border-bottom color needed mapping to --ush-border. */
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .pagination > .disabled > a,
+  html.usc-helper-dark .pagination > .disabled > a:focus,
+  html.usc-helper-dark .pagination > .disabled > a:hover,
+  html.usc-helper-dark .pagination > .disabled > span,
+  html.usc-helper-dark .pagination > .disabled > span:focus,
+  html.usc-helper-dark .pagination > .disabled > span:hover {
+    /* beats site_styles.css (same selector list, which itself wins over an identical vendor_styles.css
+       rule by source order): background-color: rgb(255, 255, 255); color: rgb(153, 153, 153) - the
+       disabled "«" (skip-to-previous) / "»" (skip-to-next) pagination items. border-color:
+       rgb(221, 221, 221) is deliberately left alone here (not remapped to --ush-border) since the
+       normal/active pagination links also carry that same border-color unmodified and read fine
+       against the dark background - overriding it here made the disabled item's outline the only
+       one that went missing. Specificity: their rule is 2 classes + 1 type; this rule is 2 classes
+       + 2 types (html + a/span), so it wins without !important. */
+    background-color: var(--ush-surface-alt);
+    color: var(--ush-text-muted);
+  }
+
+  /* ---------------------------------------------------------------- Checkout */
+
+  html.usc-helper-dark .RegAdDrpTitl {
+    /* beats site_styles.css: .RegAdDrpTitl { background-color: rgb(102, 102, 102); color: rgb(255,
+       255, 255); padding: 3px } - the "You are about to REGISTER/DROP for the following sections:"
+       bar. Single class shared by both the REGISTER and DROP variants (report only shows one rule,
+       keyed off the class, not the text), so this covers both without a separate selector. */
+    background-color: var(--ush-surface-raised);
+    color: var(--ush-text);
+    border-bottom: 1px solid var(--ush-border);
   }
 
   /* ---------------------------------------------------------------- Kendo Scheduler */

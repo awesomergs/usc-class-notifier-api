@@ -1,0 +1,121 @@
+# Dark mode handoff
+
+Branch: `dark-mode`. Working tree currently has uncommitted changes to
+`src/extension/darkMode.ts`, `src/extension/darkMode.test.ts`, and
+`src/styles/webregDark.css` (Departments/Courses guard widening + fixes below),
+not yet committed as of 2026-09-21.
+
+## Status
+
+Implemented and verified live by the user: `/Calendar` (Kendo Scheduler),
+`/CourseBin` (course accordion), `/Departments` (department list), `/Courses`
+(course list + pagination). Each page's fixes were driven by devtools
+matched-rules reports the user ran and pasted back, then verified live after a
+production build.
+
+Not started: `/TuitionRefundInsurance`. Same working method applies: get a
+matched-rules report before writing any selector.
+
+## Files
+
+- `src/extension/darkMode.ts` — the page guard. `isDarkModeSupportedPage(href)`
+  lowercases the pathname and checks `startsWith` against `/calendar`,
+  `/coursebin`, `/departments`, `/courses` — the single list to extend for a
+  new page. `shouldEnableDarkMode(options, href)` additionally requires the
+  extension enabled + the setting on. `setDarkModeActive(enabled)` toggles
+  `html.usc-helper-dark` and mirrors to `localStorage` for synchronous
+  first-paint reads; `readDarkModeMirror()` reads that mirror back.
+- `src/entrypoints/darkMode.content.ts` — second WXT content script, matches
+  `*://webreg.usc.edu/*` (all paths, no page filtering), so widening the guard
+  above is the only change needed to support a new page.
+- `src/styles/webregDark.css` (~575 lines) — the entire theme, one file, all
+  rules scoped `html.usc-helper-dark ...` inside `@media screen`. Sections
+  top-to-bottom: palette → WebReg page ground → Bootstrap 3 chrome → masthead
+  - nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
+    Kendo Scheduler → event/legend colors → our own injected UI.
+- `src/extension/style.ts` — pre-existing light-mode overlay rules
+  (`.overlaps`, `.closed`, `.closedAndOverlaps`, `.crsTitlCustom`) written as
+  `var(--ush-x, <original literal>)` so they auto-adapt in dark mode and still
+  resolve correctly for print/light mode.
+- `src/extension/extension.ts`, `src/extension/utils.ts` (`Options.darkMode`),
+  `src/extension/storage.ts`, `src/popup/index.tsx`, `src/contents/content.tsx`
+  — plumbing: storage item, live toggle wiring, popup checkbox.
+- `src/extension/darkMode.test.ts` — guard unit tests (`tsx --test`, no DOM).
+- `SOURCE_CODE_REVIEW.md` — mentions four stored preferences (read by Mozilla
+  add-on reviewers).
+
+## Palette (`html.usc-helper-dark`)
+
+Surfaces: `--ush-surface #0d0d0d`, `--ush-surface-raised #161616`,
+`--ush-surface-sunken #0a0a0a`, `--ush-surface-hover #232323`,
+`--ush-surface-alt #131313`. Lines: `--ush-border #2a2a2a`,
+`--ush-border-strong #3d3d3d`. Type: `--ush-text #e8e8ec`,
+`--ush-text-muted #9a9aa2`, `--ush-link #ff9a9a` (hover `#ffb8b8`). USC
+identity (masthead/active tab only): `--ush-cardinal #8b0000`,
+`--ush-cardinal-deep #3d0000`, `--ush-gold #ffc72c`, `--ush-gold-ink #241a00`.
+Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
+`--ush-closed-overlap-bg`.
+
+## Site facts (with real selectors)
+
+- `webregDark.css` is manifest-injected (`cssInjectionMode: "manifest"`), so
+  it never appears in `document.styleSheets` from a devtools matched-rules
+  script — any report will only ever show WebReg's own rules.
+- Kendo event fills are inline per-event, keyed by exact rgb() match:
+  `.k-event[style*="background-color: rgb(60, 167, 15)"]` (Registered),
+  `.k-event.k-event-inverse[style*="background-color: rgb(255, 204, 0)"]`
+  (Scheduled — also has Kendo's own `.k-event-inverse` forcing black text,
+  flipped back to `--ush-text`), `.k-event[style*="background-color: rgb(255,
+0, 0)"]` (Conflict).
+- Zebra-stripe specificity traps recur: CourseBin's
+  `.course-header:nth-child(4n+1)`, Departments'
+  `.department-header:nth-child(4n+3)`, and Courses'
+  `.section:nth-child(2n+1) .section-row` each needed an `html.usc-helper-dark
+.foo` override with a matching or higher class count to win — plain
+  `.foo { background: ... }` loses to these every time.
+- The generic input rule excludes by `[type]`, not by class:
+  `input:not([type="hidden"]):not([type="submit"]):not([type="button"])` —
+  submit/button inputs (e.g. `.dept_srchGo`, `.lnkCrs`) are styled separately
+  as buttons or links instead.
+- `.pagination > .disabled > a`'s `border-color: rgb(221, 221, 221)` was
+  deliberately left unmapped to `--ush-border` — the active/normal pagination
+  links carry the same border-color unmodified and read fine on the dark
+  background, so overriding it only on the disabled item made its outline the
+  only one that went missing.
+
+## Open / deferred items
+
+- Prof. Rating column misalignment on `/Courses` — pre-existing bug, explicitly
+  out of scope, not touched.
+- The `/Courses` conflict highlighter (`src/extension/*` — sets inline
+  `background-color: rgba(255, 134, 47, 0.37)` on `.section`/`.section-row`,
+  storing the original in `data-usc-helper-conflict-original-style`) currently
+  wins over `webregDark.css` via inline style, same as WebReg's own inline
+  styles. The user raised writing it as a CSS variable (like
+  `--ush-overlap-bg` in `style.ts`) instead of a literal inline value, so
+  `webregDark.css` wouldn't need `!important` to beat it — proposed, not yet
+  decided or implemented.
+- Popup checkbox label ("Dark Mode (myCalendar/myCourseBin)") and
+  `SOURCE_CODE_REVIEW.md` line ~37 still only mention Calendar/CourseBin, not
+  Departments/Courses — flagged, not updated (copy change, out of scope for
+  the CSS/guard work done so far).
+
+## Working method
+
+Never guess a selector, color, or specificity outcome — every rule must cite
+the exact WebReg rule (file + selector + value) it overrides, sourced from a
+devtools matched-rules report the user runs and pastes back; ask again if a
+report is referenced but missing. Targeted selectors only, no `*`/bare
+`div`/broad `[class*=]` sweeps. `!important` only where evidence shows an
+inline style or a WebReg `!important` being beaten, stated per rule. Keep
+diffs to exactly what's asked; respect "out of scope" lists literally; flag
+adjacent issues rather than silently fixing them.
+
+After every change: `corepack pnpm typecheck`, `lint`, `format`, `test`, then
+`NODE_ENV=production corepack pnpm build:chrome` (plain `pnpm` isn't on PATH
+here — prefix with `corepack`). The user reloads the unpacked extension at
+`chrome://extensions` (`.output/chrome-mv3`) and reports back with
+screenshots/reports; don't claim a fix works without that loop.
+`pnpm dev:extension` flashes more than production and must not be used to
+judge FOUC. `claude-in-chrome` has been declined for this project — rely on
+the user's own devtools reports.
