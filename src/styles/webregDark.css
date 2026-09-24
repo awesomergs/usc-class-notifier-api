@@ -1,5 +1,8 @@
 /*
- * Dark mode for webreg.usc.edu/Calendar and /CourseBin.
+ * Dark mode for webreg.usc.edu. Covers /Calendar, /CourseBin, /Departments, /Courses,
+ * /TuitionRefundInsurance, /Checkout, /ClearedSections, /RegisteredCourses,
+ * /RegistrationAppointment, and /Terms - see isDarkModeSupportedPage in
+ * src/extension/darkMode.ts for the exact page list this file is scoped to support.
  *
  * Everything below is gated behind `html.usc-helper-dark`, toggled by src/extension/darkMode.ts,
  * so this file being present in the manifest at document_start is harmless when the setting is

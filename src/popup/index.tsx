@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { darkPalette } from "@/extension/darkPalette";
 import {
   darkModeStorage,
   extensionEnabledStorage,
@@ -13,23 +14,23 @@ function IndexPopup() {
   const [showUnits, setShowUnits] = useStorageItem(showUnitsStorage, true);
   const [darkMode, setDarkMode] = useStorageItem(darkModeStorage, false);
 
-  // Mirrors the --ush-* tokens in src/styles/webregDark.css so the popup and the themed WebReg
-  // pages read as one system, even though this is a separate document and can't reach those vars.
   const labelClass = (disabled: boolean) =>
-    `ml-2 text-sm font-medium ${darkMode ? (disabled ? "text-[#9a9aa2]" : "text-[#e8e8ec]") : "text-gray-900"}`;
+    `ml-2 text-sm font-medium ${darkMode ? (disabled ? darkPalette.textMuted : darkPalette.textPrimary) : "text-gray-900"}`;
   const checkboxClass = darkMode
-    ? "w-5 h-5 rounded-sm bg-transparent border-[#3d3d3d] accent-[#8b0000] focus:outline-none"
+    ? `w-5 h-5 rounded-sm bg-transparent ${darkPalette.borderStrong} ${darkPalette.accentCardinal} focus:outline-none`
     : "w-5 h-5 text-blue-600 bg-gray-100 rounded-sm border-gray-300 focus:ring-blue-500";
-  const footerLinkClass = darkMode ? "text-[#ff9a9a] hover:text-[#ffb8b8]" : "";
+  const footerLinkClass = darkMode ? `${darkPalette.linkText} ${darkPalette.linkHoverText}` : "";
 
   return (
-    <div className={`px-4 pt-2 pb-1 ${darkMode ? "bg-[#161616]" : "bg-white"}`}>
+    <div className={`px-4 pt-2 pb-1 ${darkMode ? darkPalette.bgSurfaceRaised : "bg-white"}`}>
       <div
         className={`border p-6 space-y-6 rounded-lg min-w-[400px] ${
-          darkMode ? "bg-[#0d0d0d] border-[#2a2a2a]" : "bg-white border-gray-200"
+          darkMode ? `${darkPalette.bgSurface} ${darkPalette.borderDefault}` : "bg-white border-gray-200"
         }`}
       >
-        <h1 className={`text-2xl font-bold ${darkMode ? "text-[#e8e8ec]" : "text-gray-800"}`}>USC Schedule Helper</h1>
+        <h1 className={`text-2xl font-bold ${darkMode ? darkPalette.textPrimary : "text-gray-800"}`}>
+          USC Schedule Helper
+        </h1>
         <div className="flex flex-col space-y-4">
           <div className="flex items-center">
             <input
@@ -84,7 +85,7 @@ function IndexPopup() {
           </div>
         </div>
       </div>
-      <p className={`mt-2 ${darkMode ? "text-[#9a9aa2]" : "text-gray-900"}`}>
+      <p className={`mt-2 ${darkMode ? darkPalette.textMuted : "text-gray-900"}`}>
         <a className={footerLinkClass} href="https://jonlu.ca" rel="noreferrer" target="_blank">
           &copy; {new Date().getFullYear()} JonLuca DeCaro
         </a>{" "}
