@@ -33,13 +33,15 @@ export function shouldEnableDarkMode(options: { enabled: boolean; darkMode: bool
   return options.enabled && options.darkMode && isDarkModeSupportedPage(href);
 }
 
-let active = false;
-
 export function setDarkModeActive(enabled: boolean) {
-  if (enabled === active) {
+  // Read the DOM directly rather than caching "active" in a module-level variable: this module is
+  // bundled separately into both content scripts that call this function (the main content script
+  // and darkMode.content.ts), so a cached flag would be two independent copies that can silently
+  // diverge from each other and from the real DOM state. classList is the one thing both bundles
+  // actually share.
+  if (document.documentElement.classList.contains(DARK_MODE_CLASS) === enabled) {
     return;
   }
-  active = enabled;
   document.documentElement.classList.toggle(DARK_MODE_CLASS, enabled);
   try {
     localStorage.setItem(DARK_MODE_MIRROR_KEY, enabled ? "1" : "0");

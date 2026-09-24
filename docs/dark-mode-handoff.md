@@ -1,18 +1,17 @@
 # Dark mode handoff
 
-Branch: `dark-mode`. Working tree currently has uncommitted changes to
-`src/extension/darkMode.ts`, `src/extension/darkMode.test.ts`, and
-`src/styles/webregDark.css` (guard widened through `/RegistrationAppointment`
-
-- fixes below), not yet committed as of 2026-09-21.
+Branch: `dark-mode`. Committed through `0426631` ("Fixed NotificationModal
+buttons and added dark-mode support") as of 2026-09-23.
 
 ## Status
 
-Implemented and verified live by the user: `/Calendar` (Kendo Scheduler),
-`/CourseBin` (course accordion), `/Departments` (department list), `/Courses`
-(course list + pagination). Each page's fixes were driven by devtools
-matched-rules reports the user ran and pasted back, then verified live after a
-production build.
+Implemented and verified live by the user: `/Calendar` (Kendo Scheduler,
+including the Event edit dialog's `.k-window` chrome and the `.k-today`
+column highlight), `/CourseBin` (course accordion), `/Departments`
+(department list), `/Courses` (course list + pagination), `/Terms` (guard +
+secondary nav bar under the masthead), and the footer's `.footer-links`
+site-wide. Each page's fixes were driven by devtools matched-rules reports
+the user ran and pasted back, then verified live after a production build.
 
 Guard widened and verified live (page ground/chrome only — most of these
 pages have no page-specific CSS of their own, they just inherit the
@@ -27,6 +26,16 @@ Calendar/CourseBin/Departments/Courses):
 - `/RegisteredCourses` — guard only, populated course list verified.
 - `/RegistrationAppointment` — guard, plus `.permit-background` card-surface
   fix (see Site facts below).
+- `/Terms` — guard, plus `nav.navbar > .container-fluid`/`nav.navbar` border
+  fix for the secondary "Welcome, ... Logout" bar (see Site facts below).
+
+Beyond WebReg's own pages, dark mode also now covers two pieces of our own
+UI: the extension popup (`src/popup/index.tsx`, follows the same
+`darkModeStorage` setting independently of any WebReg page) and the
+`NotificationModal` ("Notify Me" dialog, `src/extension/notification.tsx`,
+reads `darkModeStorage`/`extensionEnabledStorage` directly rather than the
+`html.usc-helper-dark` DOM class since it's a React component with its own
+lifecycle).
 
 Not started: none currently queued. Ask the user for the next page and a
 matched-rules report before writing any new selector.
@@ -36,31 +45,66 @@ matched-rules report before writing any new selector.
 - `src/extension/darkMode.ts` — the page guard. `isDarkModeSupportedPage(href)`
   lowercases the pathname and checks `startsWith` against `/calendar`,
   `/coursebin`, `/departments`, `/courses`, `/tuitionrefundinsurance`,
-  `/checkout`, `/clearedsections`, `/registeredcourses`, and
-  `/registrationappointment` — the single list to extend for a new page.
-  `shouldEnableDarkMode(options, href)` additionally requires the extension
-  enabled + the setting on. `setDarkModeActive(enabled)` toggles
-  `html.usc-helper-dark` and mirrors to `localStorage` for synchronous
-  first-paint reads; `readDarkModeMirror()` reads that mirror back.
+  `/checkout`, `/clearedsections`, `/registeredcourses`,
+  `/registrationappointment`, and `/terms` — the single list to extend for a
+  new page. `shouldEnableDarkMode(options, href)` additionally requires the
+  extension enabled + the setting on; reused directly by
+  `src/extension/notification.tsx` (see Status above) rather than duplicating
+  the enabled+page-allowlist logic there. `setDarkModeActive(enabled)` toggles
+  `html.usc-helper-dark`, reading the _current DOM class_ (not a
+  module-level flag) to decide whether a toggle is a no-op, since this module
+  is bundled separately into both content scripts that call it (the main
+  content script and `darkMode.content.ts`) and a cached flag would be two
+  independent copies that could silently diverge from each other; it also
+  mirrors to `localStorage` for synchronous first-paint reads.
+  `readDarkModeMirror()` reads that mirror back.
 - `src/entrypoints/darkMode.content.ts` — second WXT content script, matches
-  `*://webreg.usc.edu/*` (all paths, no page filtering), so widening the guard
-  above is the only change needed to support a new page.
-- `src/styles/webregDark.css` (~600 lines) — the entire theme, one file, all
+  `*://webreg.usc.edu/*` only (all paths, no page filtering, and notably
+  _not_ `classes.usc.edu` - see the NotificationModal note under Status), so
+  widening the guard above is the only change needed to support a new WebReg
+  page. Its `document_start` mirror-apply only mirrors the combined
+  `darkModeStorage` result, not `extensionEnabledStorage` separately - if the
+  user disables the whole extension while zero WebReg tabs are open, the next
+  cold `/Calendar`-type load can flash dark mode for one frame before the
+  async check (which does check both) corrects it a few ms later. Reviewed
+  and accepted: the mirror only exists to dodge `browser.storage`'s async
+  gap, so closing this fully would mean giving up the FOUC-avoidance
+  optimization entirely for a narrow, self-correcting edge case.
+- `src/styles/webregDark.css` (~750 lines) — the entire theme, one file, all
   rules scoped `html.usc-helper-dark ...` inside `@media screen`. Sections
   top-to-bottom: palette → WebReg page ground → Bootstrap 3 chrome → masthead
-  - nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
-    Checkout → Registration Appointment → Kendo Scheduler → event/legend colors
-    → our own injected UI.
+  - nav (including the /Terms secondary nav bar and footer links) → alerts →
+    buttons/inputs → myCourseBin → myDepartments → myCourses → Checkout →
+    Registration Appointment → Kendo Scheduler (including the Event edit
+    dialog's `.k-window` chrome) → event/legend colors → our own injected UI.
 - `src/extension/style.ts` — pre-existing light-mode overlay rules
   (`.overlaps`, `.closed`, `.closedAndOverlaps`, `.crsTitlCustom`) written as
   `var(--ush-x, <original literal>)` so they auto-adapt in dark mode and still
   resolve correctly for print/light mode.
+- `src/extension/notification.tsx` — the "Notify Me" modal (`NotificationModal`).
+  Reads `darkModeStorage`/`extensionEnabledStorage` directly via
+  `shouldEnableDarkMode` (see darkMode.ts above) rather than depending on the
+  `html.usc-helper-dark` DOM class, since it's a React component with its own
+  lifecycle and also mounts on `classes.usc.edu`, which has no dark-mode
+  infrastructure at all.
+- `src/extension/darkPalette.ts` — shared Tailwind class-token constants
+  (`bg-[#0d0d0d]`, etc.) so `notification.tsx` and `src/popup/index.tsx` don't
+  each hardcode the same hex values independently. Each entry must stay a
+  complete, literal string - Tailwind finds classes by scanning source text,
+  not by evaluating JS, so a class assembled from pieces at a call site
+  (e.g. appending `!important` to an imported constant) is invisible to it
+  and silently never generated. A short-lived version of this file that got
+  it wrong was caught by rebuilding and grepping the compiled CSS for the
+  exact selector - the way to verify any change here.
 - `src/extension/extension.ts`, `src/extension/utils.ts` (`Options.darkMode`),
   `src/extension/storage.ts`, `src/popup/index.tsx`, `src/contents/content.tsx`
-  — plumbing: storage item, live toggle wiring, popup checkbox.
+  — plumbing: storage item, live toggle wiring, popup checkbox (now themed
+  too, see Status above).
 - `src/extension/darkMode.test.ts` — guard unit tests (`tsx --test`, no DOM).
 - `SOURCE_CODE_REVIEW.md` — mentions four stored preferences (read by Mozilla
-  add-on reviewers).
+  add-on reviewers); its functional-review section names the actual page
+  list dark mode covers, so update it alongside `darkMode.ts` if that list
+  changes.
 
 ## Palette (`html.usc-helper-dark`)
 
@@ -176,6 +220,17 @@ e.g. `bg-[#8b0000]!`) or use an inline `style` prop. A plain utility class is
 never sufficient for an element on an exposed tag, no matter how specific
 its selector looks in source.
 
+Separately: centralizing a few of these tokens into `src/extension/darkPalette.ts`
+(see Files above) is safe - Tailwind's scanner looks for literal candidate
+strings across _all_ project source files, not just the file where a
+className is written, so a complete token sitting in a small constants
+module is found just as reliably as one inline in JSX. What's _not_ safe is
+building the string dynamically at the call site (`` `bg-[${hex}]` ``, or
+appending `!` to an imported constant) - that produces a string Tailwind's
+static scanner never sees as a whole, so the class is silently never
+generated. Every distinct token, `!important` variants included, needs its
+own complete literal entry.
+
 **How to recognize the symptom:** a Tailwind class that is present in the
 compiled sheet and correctly `.matches()` the element, but **never appears
 at all** in a devtools matched-rules report for that element - that's the
@@ -218,10 +273,6 @@ is unaffected and doesn't need re-deriving.
   `--ush-overlap-bg` in `style.ts`) instead of a literal inline value, so
   `webregDark.css` wouldn't need `!important` to beat it — proposed, not yet
   decided or implemented.
-- Popup checkbox label ("Dark Mode (myCalendar/myCourseBin)") and
-  `SOURCE_CODE_REVIEW.md` line ~37 still only mention Calendar/CourseBin, not
-  any of the later pages — flagged, not updated (copy change, out of scope
-  for the CSS/guard work done so far).
 - `/ClearedSections` populated state (with actual cleared-section data,
   reusing Courses-style course-header/section-table markup) hasn't been
   screenshotted — only the empty state has. Don't assume it's covered without
@@ -234,6 +285,17 @@ rgb(255, 216, 0); color: rgb(153, 0, 0)`, `display: none` by default) was
 - `/RegisteredCourses`'s red inline `Closed` span (`style="color: #ff0000"`)
   was flagged for checking but no report/screenshot confirming it reads fine
   (or needs its own rule) has come back yet.
+- The Bootstrap chrome block (`.container`/`.panel`/`.well`/generic
+  `a`/`h1-h6`/`label`/`p`/`span`/`td`/`th`/`.text-muted`/`small`/`hr`, roughly
+  lines 121-159), the masthead `.navbar`/`#header` gradient block, and the
+  whole Kendo Scheduler chrome block (`.k-widget` through `.k-current-time`,
+  roughly lines 552-624) predate the "cite the exact WebReg rule per
+  selector" discipline (they're from the very first commit, before later
+  rounds established it) and don't have it. Not retrofitted here - doing so
+  without a live devtools report would be exactly the guessing the working
+  method exists to prevent. If any of these are touched again, get a report
+  for them at that point rather than assuming the existing values are
+  correct.
 
 ## Working method
 

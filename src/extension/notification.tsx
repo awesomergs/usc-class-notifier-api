@@ -7,7 +7,9 @@ import { toast } from "react-toastify";
 import * as EmailValidator from "email-validator";
 import { getCurrentTerm } from "@/extension/getCurrentTerm";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
-import { darkModeStorage, useStorageItem } from "@/extension/storage";
+import { shouldEnableDarkMode } from "@/extension/darkMode";
+import { darkPalette } from "@/extension/darkPalette";
+import { darkModeStorage, extensionEnabledStorage, useStorageItem } from "@/extension/storage";
 
 const localStorageEmailKey = "uscScheduleHelperEmail";
 const localStoragePhoneKey = "uscScheduleHelperPhone";
@@ -26,11 +28,11 @@ const Input = ({
 }) => {
   return (
     <div
-      className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? "bg-[#161616]" : "bg-gray-100"}`}
+      className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? darkPalette.bgSurfaceRaised : "bg-gray-100"}`}
     >
       <Typography
         variant="body2"
-        className={`font-bold text-xs ml-4 -mb-3 w-full ${darkMode ? "text-[#9a9aa2]!" : "text-neutral-400"}`}
+        className={`font-bold text-xs ml-4 -mb-3 w-full ${darkMode ? darkPalette.textMutedImportant : "text-neutral-400"}`}
       >
         {label}
       </Typography>
@@ -159,7 +161,7 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
     return (
       <>
         <div
-          className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? "bg-[#161616]" : "bg-gray-100"}`}
+          className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? darkPalette.bgSurfaceRaised : "bg-gray-100"}`}
         >
           <Input label="Email" value={email} onChange={setEmail} type={"email"} darkMode={darkMode} />
           <Input
@@ -242,7 +244,15 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
 const NotificationModal = () => {
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass)!;
   const setSelectedClass = useScheduleHelperContext((state) => state.setSelectedClass);
-  const [darkMode] = useStorageItem(darkModeStorage, false);
+  const [darkModeSetting] = useStorageItem(darkModeStorage, false);
+  const [extensionEnabled] = useStorageItem(extensionEnabledStorage, true);
+  // This modal also mounts on classes.usc.edu (see src/entrypoints/content.tsx's content-script
+  // matches), which has no dark-mode support at all - darkMode.content.ts only runs on
+  // webreg.usc.edu, so classes.usc.edu never gets html.usc-helper-dark or webregDark.css. Reusing
+  // shouldEnableDarkMode's page allowlist here (rather than the raw darkModeStorage value) keeps
+  // this modal light there even when the user's dark-mode setting is on, and also respects the
+  // "Enable Extension" toggle, which the raw storage read didn't.
+  const darkMode = shouldEnableDarkMode({ enabled: extensionEnabled, darkMode: darkModeSetting });
 
   const onClose = () => {
     setSelectedClass(null);
@@ -260,7 +270,7 @@ const NotificationModal = () => {
       <>
         <div
           className={`flex outline-hidden flex-col items-center gap-4 w-full md:w-[500px] min-h-[200px] absolute bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 px-6 py-6 rounded-t-3xl md:rounded-2xl shadow-lg max-h-screen overflow-y-auto pb-8 md:pb-4 ${
-            darkMode ? "bg-[#0d0d0d] border border-[#2a2a2a]" : "bg-white"
+            darkMode ? `${darkPalette.bgSurface} border ${darkPalette.borderDefault}` : "bg-white"
           }`}
         >
           {selectedClass ? (

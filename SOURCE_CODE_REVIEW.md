@@ -35,14 +35,9 @@ Calendar export reads the registered schedule from the user's authenticated Web 
 1. Visit a public USC classes page under `https://classes.usc.edu/term/`.
 2. Open a course with instructor results. The extension adds a `PROF RATING` column with Rate My Professors links when matching rating data exists.
 3. The extension adds notification controls to eligible section rows. Clicking one opens a form that clearly shows the selected class and requests an email address plus an optional phone number.
-<<<<<<< HEAD
 4. Visit the Calendar page on `https://webreg.usc.edu/` while authenticated with USC. The extension adds schedule conflict and unit information and an **Export as .ics** button next to **Export to PDF**.
 5. With registered classes that have meeting times, click **Export as .ics**. Open the downloaded calendar and verify meeting times and locations, session-specific start and end dates, and exclusion of university holidays and session breaks. Explicit TBA classes are skipped and counted in the completion message. Where available, repeat with a short session and a different semester or year.
 6. To exercise the fallback, block a public USC metadata request in the extension background's developer tools, then repeat the export. The extension should open USC's official calendar exporter for the selected term without downloading a partial `.ics` file.
-7. Use the toolbar popup to enable or disable the extension, conflict highlighting, unit totals, and dark mode.
-=======
-4. Visit `https://webreg.usc.edu/` while authenticated with USC. The extension adds schedule conflict and unit information and an Export to Calendar link.
-5. Use the toolbar popup to enable or disable the extension, conflict highlighting, unit totals, and dark mode for the myCalendar and myCourseBin pages.
->>>>>>> b8c7e57 (coursebin dark mode git add .)
+7. Use the toolbar popup to enable or disable the extension, conflict highlighting, unit totals, and dark mode for WebReg's registration pages (myCalendar, myCourseBin, Departments, Courses, Tuition Refund Insurance, Checkout, Cleared Sections, Registered Courses, Registration Appointment, and Terms).
 
 The add-on stores only those four display preferences in extension local storage. A submitted notification request sends the entered email address, optional phone number, and the selected class's department, section, and semester to the service described above.
