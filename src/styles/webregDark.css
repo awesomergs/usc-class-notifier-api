@@ -92,6 +92,21 @@
     background-color: var(--ush-surface);
   }
 
+  html.usc-helper-dark .footer-links a {
+    /* beats site_styles.css: .footer-links li a { color: rgb(121, 2, 2) } - dark cardinal text on
+       the near-black footer background above was unreadable. Descendant selector (not a child
+       combinator) since on /Terms unclosed <font> tags in the page body mean .footer is nested
+       several levels deep under .page-background by the time the browser finishes parsing, not a
+       direct child - background/.footer-title are left untouched, link color only. */
+    color: var(--ush-link);
+  }
+  html.usc-helper-dark .footer-links a:hover,
+  html.usc-helper-dark .footer-links a:focus {
+    /* beats site_styles.css: .footer-links li a:focus, .footer-links li a:hover
+       { color: rgb(121, 2, 2) } - same cardinal color on hover/focus as the base state */
+    color: var(--ush-link-hover);
+  }
+
   html.usc-helper-dark .mycbstat {
     /* beats site_styles.css: .mycbstat { background-color: rgb(248, 248, 248); color: rgb(124, 124, 124) }
        Only the background needs fixing here - the `span` rule further down already wins on
@@ -157,6 +172,45 @@
   html.usc-helper-dark #header a {
     color: #fff;
   }
+  html.usc-helper-dark .nav > li > a:hover,
+  html.usc-helper-dark .nav > li > a:focus {
+    /* beats vendor_styles.css: .nav > li > a:focus, .nav > li > a:hover
+       { background-color: rgb(238, 238, 238) } and site_styles.css: .nav > li > a:focus,
+       .nav > li > a:hover { color: rgb(153, 0, 0) } - both tie in specificity with the
+       html.usc-helper-dark .navbar a rule above and win that tie by source order, so !important
+       is needed here even though neither WebReg rule itself is !important. */
+    background-color: var(--ush-surface-hover) !important;
+    color: var(--ush-text) !important;
+  }
+
+  /* ---------------------------------------------------------------- /Terms secondary nav bar */
+  /* /Terms has a second nav.navbar below the masthead ("Welcome, <name>. Logout") whose
+     nav.navbar > .container-fluid carries no WebReg background rule at all - by WebReg's own CSS
+     it's transparent by default, letting the cardinal .navBar.centeralign-nav
+     (site_styles.css: .centeralign-nav { background: rgb(153, 0, 0) }) and the cardinal
+     .row.main-container beneath it (inline style="background-color: #990000") show through, which
+     is why it blends into the header in light mode. Our own generic
+     html.usc-helper-dark .container-fluid rule above (background-color: var(--ush-surface-raised))
+     is correct everywhere else that class appears, but paints this one a flat gray strip since
+     WebReg gave it nothing to override. Scoped to body.terms-page only - every other page's nav is
+     already verified correct and untouched here.
+     A plain transparent background let the masthead's own linear-gradient(--ush-cardinal ->
+     --ush-cardinal-deep) show through and fade to near-black behind this bar, which read as a
+     rendering glitch - solid var(--ush-cardinal) (the gradient's top/flat color, matching the main
+     header) instead.
+     This nav.navbar also carries plain class "navbar", so our own masthead rule above
+     (html.usc-helper-dark .navbar { border-color: var(--ush-cardinal-deep) !important }) matches it
+     too, giving vendor_styles.css's otherwise-invisible `.navbar { border: 1px solid transparent }`
+     a real color and drawing a visible box around the bar - reset to transparent here, scoped the
+     same way. */
+
+  html.usc-helper-dark body.terms-page nav.navbar {
+    border-color: transparent !important;
+  }
+
+  html.usc-helper-dark body.terms-page nav.navbar > .container-fluid {
+    background-color: var(--ush-cardinal);
+  }
 
   html.usc-helper-dark .nav-tabs {
     border-bottom-color: var(--ush-border);
@@ -176,6 +230,46 @@
     background-color: var(--ush-gold) !important;
     border-color: var(--ush-gold) !important;
     color: var(--ush-gold-ink) !important;
+  }
+
+  /* ---------------------------------------------------------------- nav dropdowns (myInfo, term selector) */
+  /* The dropdown toggle and menu are both nested inside #header, so the `color: #fff` from our own
+     html.usc-helper-dark #header a / .navbar a rule above (an id selector) outranks any plain-class
+     override here regardless of how deep the selector nests - !important is required on `color` in
+     every rule below to win over that. background-color/border-color have no such id rule competing,
+     but are kept !important alongside for consistency within each block. */
+
+  html.usc-helper-dark li.open > a.dropdown-toggle,
+  html.usc-helper-dark li.open > a.dropdown-toggle:hover,
+  html.usc-helper-dark li.open > a.dropdown-toggle:focus {
+    /* beats vendor_styles.css: .nav .open > a, .nav .open > a:focus, .nav .open > a:hover
+       { background-color: rgb(238, 238, 238); border-color: rgb(51, 122, 183) } */
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu {
+    /* beats site_styles.css: .dropdown-menu { background-color: rgb(239, 238, 234); box-shadow: none } */
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu > li > a {
+    /* beats vendor_styles.css: .dropdown-menu > li > a { color: rgb(51, 51, 51) } and
+       site_styles.css: .dropdown-menu > li > a, .dropdown-menu > li > a:hover
+       { background-color: rgb(239, 238, 234); color: rgb(153, 0, 0) } (its non-hover branch) */
+    background-color: transparent !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu > li > a:hover,
+  html.usc-helper-dark .dropdown-menu > li > a:focus {
+    /* beats vendor_styles.css: .dropdown-menu > li > a:focus, .dropdown-menu > li > a:hover
+       { background-color: rgb(245, 245, 245); color: rgb(38, 38, 38) } and the hover branch of the
+       site_styles.css rule cited above */
+    background-color: var(--ush-surface-hover) !important;
+    color: var(--ush-text) !important;
   }
 
   /* ---------------------------------------------------------------- alerts / banners */
@@ -518,10 +612,61 @@
     background-color: var(--ush-surface-alt) !important;
   }
   html.usc-helper-dark .k-today {
-    background-color: rgba(255, 199, 44, 0.07) !important;
+    /* was a faint --ush-gold tint to mirror Kendo's own light-mode "today" column highlight, but
+       read as an unwanted yellow column in dark mode - flattened to the same surface as the rest
+       of the scheduler table (html.usc-helper-dark .k-scheduler-table above) so today's column no
+       longer stands out. */
+    background-color: var(--ush-surface) !important;
   }
   html.usc-helper-dark .k-current-time {
     background-color: var(--ush-gold) !important;
+  }
+
+  /* ---------------------------------------------------------------- Kendo Event edit dialog */
+  /* Confirmed via a devtools matched-rules report on the live Event dialog (double-click an empty
+     Calendar slot). The dialog isn't inside #scheduler and its root doesn't carry class "k-widget"
+     (only "k-window k-focus"), so it fell through every existing Kendo rule above - not a scoping
+     bug, just a genuinely uncovered element. */
+
+  html.usc-helper-dark .k-window {
+    /* beats vendor_kendo_styles.css: .k-window { background-color: rgb(255, 255, 255);
+       color: rgb(51, 51, 51) } and .k-window, .k-window-titlebar { border-color: rgb(221, 221, 221) } */
+    background-color: var(--ush-surface);
+    border-color: var(--ush-border);
+    color: var(--ush-text);
+  }
+
+  html.usc-helper-dark .k-window-titlebar {
+    /* No page rule sets a background here at all (report: "no matching page rules" beyond the
+       shared border-color above), so the titlebar was showing .k-window's own white through it.
+       The "Event" title text itself is already var(--ush-text) via the generic
+       html.usc-helper-dark span rule above, which is why it read as near-invisible light text on
+       that white titlebar - fixing the titlebar background alone makes it legible. Same story for
+       the k-window-titlebar-action close button: it's already themed dark by the generic
+       html.usc-helper-dark .k-button rule (it carries class k-button), but
+       vendor_kendo_styles.css's .k-window-titlebar-action { opacity: 0.5 } was blending that dark
+       button against the white titlebar behind it into the washed-out gray box in the screenshot -
+       no separate close-button rule needed once the titlebar itself is dark. */
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+  }
+
+  /* .k-edit-label > label (Label/Start/End) needs no rule of its own: it's already var(--ush-text)
+     via the generic html.usc-helper-dark label rule above (beats vendor_styles.css:
+     label { color: rgb(77, 77, 77) }) - the "near-invisible" text the report called out is the
+     same white-background problem as the title, resolved by the .k-window fix above. */
+
+  html.usc-helper-dark .k-input-solid {
+    /* beats vendor_kendo_styles.css: .k-input-solid { background-color: rgb(255, 255, 255);
+       color: rgb(34, 34, 34); border-color: rgb(204, 204, 204) } - this is the pill wrapper around
+       each time picker's text input and clock-icon button. The input inside it
+       (html.usc-helper-dark input:not([type="hidden"])... above) is already
+       var(--ush-surface-sunken)/var(--ush-border-strong), and the clock button is already dark via
+       .k-button - it's this wrapper alone that was white, making the whole control look like a
+       dark input floating in a white pill. Matched to the same surface as the input, with
+       var(--ush-border) as the separating edge WebReg's own 204,204,204 border was providing. */
+    background-color: var(--ush-surface-sunken);
+    border-color: var(--ush-border);
   }
 
   /* Event item colors are left exactly as WebReg sets them (inline, per event), except

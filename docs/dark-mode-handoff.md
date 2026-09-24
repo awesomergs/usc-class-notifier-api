@@ -3,7 +3,8 @@
 Branch: `dark-mode`. Working tree currently has uncommitted changes to
 `src/extension/darkMode.ts`, `src/extension/darkMode.test.ts`, and
 `src/styles/webregDark.css` (guard widened through `/RegistrationAppointment`
-+ fixes below), not yet committed as of 2026-09-21.
+
+- fixes below), not yet committed as of 2026-09-21.
 
 ## Status
 
@@ -17,6 +18,7 @@ Guard widened and verified live (page ground/chrome only — most of these
 pages have no page-specific CSS of their own, they just inherit the
 Bootstrap-chrome/course-accordion/section-table rules already written for
 Calendar/CourseBin/Departments/Courses):
+
 - `/TuitionRefundInsurance` — guard only, no dedicated CSS needed.
 - `/Checkout` — guard, plus `.RegAdDrpTitl` (register/drop banner) and
   `.accordion-content-area` left-border fix (see Site facts below).
@@ -46,9 +48,9 @@ matched-rules report before writing any new selector.
 - `src/styles/webregDark.css` (~600 lines) — the entire theme, one file, all
   rules scoped `html.usc-helper-dark ...` inside `@media screen`. Sections
   top-to-bottom: palette → WebReg page ground → Bootstrap 3 chrome → masthead
-  + nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
-  Checkout → Registration Appointment → Kendo Scheduler → event/legend colors
-  → our own injected UI.
+  - nav → alerts → buttons/inputs → myCourseBin → myDepartments → myCourses →
+    Checkout → Registration Appointment → Kendo Scheduler → event/legend colors
+    → our own injected UI.
 - `src/extension/style.ts` — pre-existing light-mode overlay rules
   (`.overlaps`, `.closed`, `.closedAndOverlaps`, `.crsTitlCustom`) written as
   `var(--ush-x, <original literal>)` so they auto-adapt in dark mode and still
@@ -82,12 +84,12 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   `.k-event.k-event-inverse[style*="background-color: rgb(255, 204, 0)"]`
   (Scheduled — also has Kendo's own `.k-event-inverse` forcing black text,
   flipped back to `--ush-text`), `.k-event[style*="background-color: rgb(255,
-  0, 0)"]` (Conflict).
+0, 0)"]` (Conflict).
 - Zebra-stripe specificity traps recur: CourseBin's
   `.course-header:nth-child(4n+1)`, Departments'
   `.department-header:nth-child(4n+3)`, and Courses'
   `.section:nth-child(2n+1) .section-row` each needed an `html.usc-helper-dark
-  .foo` override with a matching or higher class count to win — plain
+.foo` override with a matching or higher class count to win — plain
   `.foo { background: ... }` loses to these every time.
 - The generic input rule excludes by `[type]`, not by class:
   `input:not([type="hidden"]):not([type="submit"]):not([type="button"])` —
@@ -100,32 +102,109 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   only one that went missing.
 - `/TuitionRefundInsurance`, `/Checkout`, and `/RegistrationAppointment` have
   no `.container.inner-container` — content sits directly under `#sb-site >
-  .row.main-container > .col-* > .content-wrapper-*` (`-regconfirm`,
+.row.main-container > .col-* > .content-wrapper-*` (`-regconfirm`,
   `-regconfirm`, `-permit` respectively). No wrapper-specific rule was ever
   needed for the page ground: it comes for free from the unconditional
   `html.usc-helper-dark` / `body` / `.page-background` / `#sb-site` rules,
   which aren't scoped to any wrapper class. `/ClearedSections` and
-  `/RegisteredCourses` *do* have `.inner-container` and share
+  `/RegisteredCourses` _do_ have `.inner-container` and share
   `.content-wrapper-clearedList`.
 - `.RegAdDrpTitl` (Checkout's "You are about to REGISTER/DROP for the
   following sections:" banner) is a single class shared by both the REGISTER
   and DROP variants (confirmed: the report keys the WebReg rule off the class
   alone, not the text), so one rule covers both — beats `site_styles.css:
-  .RegAdDrpTitl { background-color: rgb(102, 102, 102); color: rgb(255, 255,
-  255); padding: 3px }`.
+.RegAdDrpTitl { background-color: rgb(102, 102, 102); color: rgb(255, 255,
+255); padding: 3px }`.
 - `.accordion-content-area` needed both `border-bottom-color` and
   `border-left-color` mapped to `--ush-border` — `site_styles.css` sets both
   as separate declarations in the same rule (`border-bottom: 1px solid
-  rgb(242, 241, 241); border-left: 1px solid rgb(242, 241, 241)`); no
+rgb(242, 241, 241); border-left: 1px solid rgb(242, 241, 241)`); no
   `border-right`/`border-top` declared, so none added.
 - `.permit-background` (RegistrationAppointment's date card) is
   `site_styles.css: .permit-background { background-color: rgb(241, 241,
   241); border: thin solid rgb(220, 220, 220); border-color: rgb(220, 220,
-  220) }` — background/border only, no `color` on the element or its child
-  `div`/`span` (report showed "no matching page rules" for those), so the
-  date text already inherits `--ush-text` once the card background goes dark;
-  no separate text-color override was needed. `radius=0px` in the computed
-  report, so no `border-radius` was added.
+
+220. }`— background/border only, no`color`on the element or its child
+ `div`/`span`(report showed "no matching page rules" for those), so the
+  date text already inherits`--ush-text`once the card background goes dark;
+  no separate text-color override was needed.`radius=0px`in the computed
+  report, so no`border-radius` was added.
+
+## Content-script Tailwind vs. WebReg CSS (cascade layers)
+
+The React UI the content script renders (`src/contents/content.tsx`, mounted
+`anchor: "body"` / `position: "inline"` — integrated into the page, not a
+shadow root) shares the live DOM with WebReg's own stylesheets. Its Tailwind
+classes come from `src/styles/globals.css` (`@import "tailwindcss"`), and
+Tailwind v4's compiled output wraps everything in native CSS `@layer`
+blocks — `.output/*/content-scripts/content.css` opens with `@layer
+properties, theme, base, components, utilities`, and every utility class
+(`.bg-gray-100`, `.bg-[#8b0000]`, etc.) lives inside `@layer utilities`.
+WebReg's own `vendor_styles.css`/`site_styles.css` are legacy, **unlayered**
+CSS.
+
+Per the CSS cascade, for normal (non-`!important`) declarations, **any
+unlayered author rule beats any layered author rule outright, before
+specificity is even consulted.** So a Tailwind utility class can be present
+in the compiled sheet, correctly matching the element by class, and still
+lose completely to a WebReg rule that looks numerically less specific —
+confirmed live on `/Courses`: `.bg-gray-100 { background-color:
+var(--color-gray-100) }` (layered) lost outright to `vendor_styles.css:
+button { background-color: rgb(0, 140, 186); color: rgb(255, 255, 255);
+border: 0px solid rgb(0, 112, 149) }` (unlayered, spec `0,0,1`) on the
+Submit button in `src/extension/notification.tsx`, even though `.bg-gray-100`
+is a class selector and should have won by specificity alone. It had never
+actually rendered gray in production, in light mode or dark - discovered
+while building the modal's dark-mode support, unrelated to dark mode itself.
+
+**Confirmed exposed** (WebReg sets `color`/`background-color`/`border` on
+the bare tag globally): `button`, `input[type="email"]` (and presumably
+other typed inputs, per the generic input rule noted under Site facts), `a`.
+**Not exposed**: `div`, `section` - WebReg has no generic rule for those, so
+a plain Tailwind background/text class on a wrapper `<div>` works fine.
+
+Caveat: this isn't only a WebReg-stylesheet problem. `webregDark.css` itself
+is also plain unlayered CSS (see the closing note below), so its own
+blanket tag-level rules (e.g. `html.usc-helper-dark p, span, label, h1-h6,
+td, th { color: var(--ush-text) }`) will equally defeat a _different_ color
+a Tailwind-layered dark-mode class tries to put on the same tag - e.g. a MUI
+`Typography` renders a `<p>`, so giving it `--ush-text-muted` instead of the
+blanket `--ush-text` needs the same fix below, only once dark mode is on.
+
+**Fix:** mark the Tailwind utility `!important` (Tailwind v4's `!` suffix,
+e.g. `bg-[#8b0000]!`) or use an inline `style` prop. A plain utility class is
+never sufficient for an element on an exposed tag, no matter how specific
+its selector looks in source.
+
+**How to recognize the symptom:** a Tailwind class that is present in the
+compiled sheet and correctly `.matches()` the element, but **never appears
+at all** in a devtools matched-rules report for that element - that's the
+layered/unlayered tier loss, not a specificity problem. A genuine
+specificity loss still shows the losing rule _in_ the matched list, just
+outranked by something with a higher score; a rule that's entirely absent
+despite matching by class is the tell.
+
+**Scope:** only the content-script React UI (`src/contents/*`,
+`src/extension/notification.tsx`, `src/components/VenmoPaymentPanel.tsx`,
+anything else rendered into the WebReg page). The popup (`src/popup/*`) and
+the separate web dashboard (`src/pages/*`) are exempt - their own documents,
+no WebReg CSS present at all.
+
+**Audit finding, not yet fixed:** `src/components/VenmoPaymentPanel.tsx`
+(rendered inside this same NotificationModal when `data.showVenmoInfo` is
+true) has the identical exposure on one `<button>` (`bg-violet-100
+border-violet-300 text-violet-900`, the "Copy note" button) and two `<a>`
+tags (`bg-[#008CFF] text-white`, the Venmo pay link; `text-violet-800`, the
+"Recover your payment" link) - all plain, non-`!` Tailwind classes, all
+currently rendering in WebReg's blue instead of their intended colors, in
+production today. Deferred: out of scope for the notification-modal
+light/dark commits (which touch only `notification.tsx`), and it would also
+need its own dark-mode design decision, not just a mechanical `!` fix.
+
+webregDark.css remains hand-written plain CSS, never passed through
+Tailwind, so it is **not** layer-wrapped and doesn't inherit this hazard -
+its existing specificity-based reasoning (documented throughout this file)
+is unaffected and doesn't need re-deriving.
 
 ## Open / deferred items
 
@@ -149,7 +228,7 @@ Overlay vars consumed by `style.ts`: `--ush-overlap-bg`, `--ush-closed-bg`,
   checking; it should be, by the same shared-class rules RegisteredCourses
   uses, but hasn't been confirmed live.
 - `/ClearedSections`'s `#result2` inline yellow banner (`background-color:
-  rgb(255, 216, 0); color: rgb(153, 0, 0)`, `display: none` by default) was
+rgb(255, 216, 0); color: rgb(153, 0, 0)`, `display: none` by default) was
   noted but never triggered/verified — if it ever shows, it may need the same
   inline-override treatment as `#dialog_aud` etc. in myCourseBin.
 - `/RegisteredCourses`'s red inline `Closed` span (`style="color: #ff0000"`)
