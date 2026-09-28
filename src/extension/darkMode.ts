@@ -1,6 +1,6 @@
 // Dark mode for webreg.usc.edu/Calendar, /CourseBin, /Departments, /Courses,
 // /TuitionRefundInsurance, /Checkout, /ClearedSections, /RegisteredCourses, /RegistrationAppointment,
-// and /Terms. Themes the page chrome (masthead, tabs, buttons, forms) via
+// /Terms, /Restrictions, and /Acknowledgement. Themes the page chrome (masthead, tabs, buttons, forms) via
 // src/styles/webregDark.css, plus the Kendo Scheduler grid on Calendar and the course
 // accordion/section table shared by CourseBin, Courses, Checkout, ClearedSections, and
 // RegisteredCourses. Event and legend item colors on Calendar are left mostly as WebReg sets them
@@ -22,7 +22,13 @@ export function isDarkModeSupportedPage(href: string = window.location.href): bo
       pathname.startsWith("/clearedsections") ||
       pathname.startsWith("/registeredcourses") ||
       pathname.startsWith("/registrationappointment") ||
-      pathname.startsWith("/terms")
+      pathname.startsWith("/terms") ||
+      // Unconfirmed: guessed from body.restrictions-page following the same
+      // capitalized-body-class-minus-"-page" convention every other page here has matched so far -
+      // verify the actual URL bar path once the page is reproducible and correct if wrong.
+      pathname.startsWith("/restrictions") ||
+      // Confirmed from the restrictions page's own "Continue" link (href="/Acknowledgement").
+      pathname.startsWith("/acknowledgement")
     );
   } catch {
     return false;

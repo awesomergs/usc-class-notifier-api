@@ -364,9 +364,23 @@
 
   html.usc-helper-dark .bs-callout {
     /* beats site_styles.css: .bs-callout { border-top: 1px solid rgb(238, 238, 238); border-color:
-       rgb(238, 238, 238) } - shared by both .bs-callout-default and .bs-callout-warning, whose
-       computed background was already transparent so only the border needed fixing. */
+       rgb(238, 238, 238) } - shared by .bs-callout-default, -warning, and -danger (/Restrictions),
+       whose computed background was already transparent so only the border needed fixing. Confirmed
+       via a live /Restrictions report that WebReg gives -danger no severity-specific border or
+       background of its own - same neutral gray border as every other variant - so nothing further
+       is needed here for it. */
     border-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .alert-title {
+    /* /Restrictions ("you have a hold and may not register"). beats html.usc-helper-dark span
+       above (2 classes + 1 type beats 1 class + 2 types), which was winning over site_styles.css:
+       .alert-title { color: rgb(153, 0, 0) } and silently turning this warning text the same
+       neutral color as everything else - confirmed via live report (computed was --ush-text, not
+       red) and screenshot. rgb(153, 0, 0) is the exact color already mapped to var(--ush-link)
+       elsewhere (a.sessLnk, .footer-links) for the identical reason - WebReg's own cardinal-red UI
+       text needs a legible-on-dark equivalent - so reused here rather than inventing a new red. */
+    color: var(--ush-link);
   }
 
   html.usc-helper-dark .cb_srchtxt {
