@@ -1,7 +1,19 @@
 # Dark mode handoff
 
-Branch: `dark-mode`. Committed through `0426631` ("Fixed NotificationModal
-buttons and added dark-mode support") as of 2026-09-23.
+Branch: `dark-mode`. Committed through `ddec9ad` ("minor fixes, restrictions
+page") as of 2026-09-28.
+
+Rebased onto upstream `jonluca/usc-class-notifier-api` `master` at `6c605c2`.
+The only conflict was `SOURCE_CODE_REVIEW.md` - resolved by keeping
+upstream's detailed `.ics` export steps (4-6) plus this branch's dark-mode
+step and full page list (step 7) in the same file. Upstream's four commits
+touched `coursesPage.ts` and `schedule.ts`, not any dark-mode file, so the
+rebase didn't require re-deriving or re-verifying any CSS/guard logic - just
+that one doc merge. Rebasing rewrote every commit hash on this branch (all
+the hashes referenced elsewhere in this doc predate it), and the branch has
+**not been pushed since** - the next push to `origin/dark-mode` needs
+`--force-with-lease`, not a plain push, since the remote still has the
+pre-rebase commits.
 
 ## Status
 
